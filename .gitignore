@@ -47,3 +47,7 @@ CMakeUserPresets.json
 
 CPackConfig.cmake
 CPackSourceConfig.cmake
+
+# Custom
+build/
+temp/

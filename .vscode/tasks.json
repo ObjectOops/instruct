@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cmake",
+			"label": "CMake: build",
+			"command": "build",
+			"targets": [
+				"all"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"detail": "CMake template build task"
+		},
+		{
+			"label": "Clear Data",
+			"type": "shell",
+			"command": "rm -r ${workspaceFolder}/build/instruct_data",
+			"problemMatcher": []
+		}
+	]
+}
