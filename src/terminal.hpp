@@ -5,11 +5,11 @@
 
 using namespace std;
 
-void enableAlternateScreenBuffer() {
+inline void enableAlternateScreenBuffer() {
     cout << "\033[?1049h";
 }
 
-void disableAlternateScreenBuffer() {
+inline void disableAlternateScreenBuffer() {
     cout << "\033[?1049l";
 }
 

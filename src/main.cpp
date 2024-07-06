@@ -1,15 +1,13 @@
 #include <unistd.h>
+#include <iostream>
 #include <string>
-#include <vector>
 
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/component/component.hpp"
 
+#include "constants.hpp"
 #include "terminal.hpp"
 #include "setup.hpp"
-
-const std::string DATA_DIR {"instruct_data"};
-const int MAX_INSTRUCTOR_PASSWORD_LENGTH = 16;
 
 bool instructSetup(std::string);
 
@@ -17,7 +15,7 @@ int main() {
     
     // auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
     
-    if (/*!dataDirExists(DATA_DIR)*/true) {
+    if (/*!dataDirExists()*/true) {
         auto setupScreen {ftxui::ScreenInteractive::Fullscreen()};
         
         ftxui::Element h1 {ftxui::text("Instruct Set Up")};
@@ -149,21 +147,32 @@ bool instructSetup(std::string instructPswd) {
     auto handleStep {[&] (bool stepSuccess) {
         if (!stepSuccess) {
             displayProgress(errStr(), true);
-            displayProgress("Press [Enter] to exit.");
+            displayProgress("Press [Enter] to exit. More details may be provided on termination.");
             std::cin.get();
             return false;
         }
         return true;
     }};
     
-    displayProgress("Creating data directory `" + DATA_DIR + "`.");
-    if (!handleStep(createDataDir(DATA_DIR))) {
+    displayProgress("Creating data directory `" + std::string {DATA_DIR} + "`.");
+    if (!handleStep(createDataDir())) {
         return false;
     }
     
     displayProgress("Populating data directory.");
-    displayProgress("Setting instructor password: " + instructPswd);
-    // updateInstructPswd(instructPswd);
+    if (!handleStep(populateDataDir())) {
+        displayProgress("Deleting data directory.");
+        deleteDataDir();
+        return false;
+    }
+    
+    // displayProgress("Setting instructor password: " + instructPswd);
+    // if (!handleStep(updateInstructPswd(instructPswd))) {
+    //     displayProgress("Deleting data directory.");
+    //     deleteDataDir();
+    //     return false;
+    // }
+    (void)instructPswd;
     
     disableAlternateScreenBuffer();
     return true;

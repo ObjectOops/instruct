@@ -19,6 +19,7 @@ set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS} -s -static")
 
 include(FetchContent)
 
+# FTXUI -----------------------
 FetchContent_Declare(ftxui
     GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
     GIT_TAG v5.0.0
@@ -26,12 +27,28 @@ FetchContent_Declare(ftxui
 
 FetchContent_GetProperties(ftxui)
 if(NOT ftxui_POPULATED)
+    message(STATUS "Fetching FTXUI...")
     FetchContent_Populate(ftxui)
     add_subdirectory(${ftxui_SOURCE_DIR} ${ftxui_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
+# YAML-CPP --------------------
+FetchContent_Declare(
+    yaml-cpp
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp
+    GIT_TAG 0.8.0
+)
+FetchContent_GetProperties(yaml-cpp)
+
+if(NOT yaml-cpp_POPULATED)
+    message(STATUS "Fetching yaml-cpp...")
+    FetchContent_Populate(yaml-cpp)
+    add_subdirectory(${yaml-cpp_SOURCE_DIR} ${yaml-cpp_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+# -----------------------------
 
 add_executable(instruct
     src/main.cpp
+    src/setup.cpp
 )
 target_include_directories(instruct PRIVATE src)
 
@@ -39,6 +56,7 @@ target_link_libraries(instruct
     PRIVATE ftxui::screen
     PRIVATE ftxui::dom
     PRIVATE ftxui::component
+    PRIVATE yaml-cpp::yaml-cpp
 )
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
