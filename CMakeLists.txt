@@ -21,7 +21,7 @@ include(FetchContent)
 
 # FTXUI -----------------------
 FetchContent_Declare(ftxui
-    GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
+    GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI.git
     GIT_TAG v5.0.0
 )
 
@@ -34,21 +34,36 @@ endif()
 # YAML-CPP --------------------
 FetchContent_Declare(
     yaml-cpp
-    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
     GIT_TAG 0.8.0
 )
-FetchContent_GetProperties(yaml-cpp)
 
+FetchContent_GetProperties(yaml-cpp)
 if(NOT yaml-cpp_POPULATED)
     message(STATUS "Fetching yaml-cpp...")
     FetchContent_Populate(yaml-cpp)
     add_subdirectory(${yaml-cpp_SOURCE_DIR} ${yaml-cpp_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
+# PICOSHA2 --------------------
+FetchContent_Declare(
+    picosha2
+    GIT_REPOSITORY https://github.com/okdshin/PicoSHA2.git
+    GIT_TAG 27fcf6979298949e8a462e16d09a0351c18fcaf2
+)
+
+FetchContent_GetProperties(picosha2)
+if(NOT picosha2_POPULATED)
+    message(STATUS "Fetching picosha2...")
+    FetchContent_Populate(picosha2)
+    add_subdirectory(${picosha2_SOURCE_DIR} ${picosha2_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 # -----------------------------
 
 add_executable(instruct
     src/main.cpp
+    src/data.cpp
     src/setup.cpp
+    src/security.cpp
 )
 target_include_directories(instruct PRIVATE src)
 
@@ -57,6 +72,7 @@ target_link_libraries(instruct
     PRIVATE ftxui::dom
     PRIVATE ftxui::component
     PRIVATE yaml-cpp::yaml-cpp
+    PRIVATE picosha2
 )
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")

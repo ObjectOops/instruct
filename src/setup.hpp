@@ -4,20 +4,29 @@
 #include <system_error>
 #include <filesystem>
 #include <exception>
-#include <iostream>
-
-#include "yaml-cpp/yaml.h"
+#include <fstream>
+#include <string>
+#include <memory>
 
 #include "constants.hpp"
-#include "terminal.hpp"
+#include "data.hpp"
 
-inline std::error_code setupError;
+struct SetupError {
+    std::error_code errCode;
+    std::string msg, exMsg;
+};
 
-bool dataDirExists();
+inline SetupError setupError {};
+
+const SetupError &getSetupError();
+
+bool setupIncomplete();
 
 bool createDataDir();
 
 bool populateDataDir();
+
+bool setDefaults();
 
 void deleteDataDir();
 

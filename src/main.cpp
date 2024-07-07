@@ -7,6 +7,7 @@
 
 #include "constants.hpp"
 #include "terminal.hpp"
+#include "security.hpp"
 #include "setup.hpp"
 
 bool instructSetup(std::string);
@@ -15,7 +16,7 @@ int main() {
     
     // auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
     
-    if (/*!dataDirExists()*/true) {
+    if (setupIncomplete()) {
         auto setupScreen {ftxui::ScreenInteractive::Fullscreen()};
         
         ftxui::Element h1 {ftxui::text("Instruct Set Up")};
@@ -113,7 +114,16 @@ int main() {
     
     // auto app {ftxui::Renderer()}
     
+    // Do namespace things once setup has been cleared.
+        // exception output for create file setup
+        // notification
+        /*
+        Ahh
+        Also scroll the setup output.
+        */
+       // Set up screen in separate function?
     // Also reset appScreen cursor manually.
+    // Check if another instance is already running.
     // appScreen.Exit();
     // appScreen.Loop();
     
@@ -136,22 +146,36 @@ bool instructSetup(std::string instructPswd) {
             ftxui::window(ftxui::text("Setting up..."), ftxui::vbox(progress))
         );
         nestedSetupScreen.Print();
-        usleep(500000);
-    }};
-    auto errStr {[] {
-        return "An error occurred: Error Code " 
-            + std::to_string(setupError.value()) 
-            + " \"" + setupError.message() + "\" " 
-            + setupError.category().name();
     }};
     auto handleStep {[&] (bool stepSuccess) {
         if (!stepSuccess) {
-            displayProgress(errStr(), true);
-            displayProgress("Press [Enter] to exit. More details may be provided on termination.");
+            const SetupError &setupError {getSetupError()};
+            std::string setupErrorStr {
+                "An error occurred: " 
+                + (setupError.errCode.value() != 0 ? 
+                    "Error Code: " 
+                    + std::to_string(setupError.errCode.value()) 
+                    + " \"" + setupError.errCode.message() 
+                    + "\" " + setupError.errCode.category().name()
+                    : "No error code.")
+                + (!setupError.exMsg.empty() ? 
+                    " | Exception: " + setupError.exMsg
+                    : " | No exception.")
+                + " | Message: " + setupError.msg
+            };
+            disableAlternateScreenBuffer();
+            std::cerr << setupErrorStr << '\n';
+            enableAlternateScreenBuffer();
+            displayProgress(setupErrorStr, true);
+            displayProgress("Press [Enter] to exit.");
             std::cin.get();
             return false;
         }
         return true;
+    }};
+    auto setupFail {[&] {
+        displayProgress("Deleting data directory.");
+        deleteDataDir();
     }};
     
     displayProgress("Creating data directory `" + std::string {DATA_DIR} + "`.");
@@ -161,18 +185,25 @@ bool instructSetup(std::string instructPswd) {
     
     displayProgress("Populating data directory.");
     if (!handleStep(populateDataDir())) {
-        displayProgress("Deleting data directory.");
-        deleteDataDir();
+        setupFail();
         return false;
     }
     
-    // displayProgress("Setting instructor password: " + instructPswd);
-    // if (!handleStep(updateInstructPswd(instructPswd))) {
-    //     displayProgress("Deleting data directory.");
-    //     deleteDataDir();
-    //     return false;
-    // }
-    (void)instructPswd;
+    displayProgress("Setting defaults.");
+    if (!handleStep(setDefaults())) {
+        setupFail();
+        return false;
+    }
+    
+    displayProgress("Setting instructor password: " 
+        + instructPswd + " length " + std::to_string(instructPswd.length()));
+    if (!handleStep(updateInstructPswd(instructPswd))) {
+        setupFail();
+        return false;
+    }
+    
+    displayProgress("Press [Enter] to complete set up.");
+    std::cin.get();
     
     disableAlternateScreenBuffer();
     return true;
