@@ -36,6 +36,13 @@ int main(int argc, char **argv) {
         }
     }
     
+    instruct::Data::initAll();
+    if (instruct::sec::instanceActive()) {
+        LOG_F(1, "Already running. Exiting.");
+        std::cout << "Detected an instance of instruct already running.\n";
+        return 1;
+    }
+    
     // Check if another instance is already running.
     // auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
     // auto app {ftxui::Renderer()}

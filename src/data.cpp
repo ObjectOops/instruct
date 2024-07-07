@@ -13,3 +13,8 @@ void instruct::Data::saveData() {
     fout << data;
     fout.close();
 }
+
+void instruct::Data::initAll() {
+    instruct::Data::instructData = 
+        std::make_unique<instruct::Data>(instruct::constants::INSTRUCTOR_CONFIG);
+}

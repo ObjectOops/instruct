@@ -8,8 +8,10 @@
 
 namespace instruct::constants {
     inline const std::filesystem::path DATA_DIR {"instruct_data"};
-    inline const std::filesystem::path INSTRUCTOR_CONFIG {DATA_DIR / "instructor_config.yaml"};
     inline const std::filesystem::path LOG_DIR {"instruct.log"};
+
+    inline const std::filesystem::path INSTRUCTOR_CONFIG {DATA_DIR / "instructor_config.yaml"};
+    inline const std::string INSTRUCTOR_PORT_KEY = "instructor_port";
 
     inline constexpr int MAX_INSTRUCTOR_PASSWORD_LENGTH = 16;
     

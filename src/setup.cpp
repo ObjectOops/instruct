@@ -46,9 +46,8 @@ bool instruct::setup::populateDataDir() {
 
 bool instruct::setup::setDefaults() {
     try {
-        instruct::Data::instructData = 
-            std::make_unique<instruct::Data>(instruct::constants::INSTRUCTOR_CONFIG);
-        instruct::Data::instructData->data["instructor_port"] = 3000;
+        instruct::Data::initAll();
+        instruct::Data::instructData->data[instruct::constants::INSTRUCTOR_PORT_KEY] = 3000;
         instruct::Data::instructData->saveData();
     } catch (const std::exception &e) {
         instruct::setup::setupError.errCode = std::make_error_code(std::errc::io_error);

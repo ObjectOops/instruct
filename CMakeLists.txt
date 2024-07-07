@@ -67,23 +67,39 @@ if(NOT loguru_POPULATED)
     FetchContent_Populate(loguru)
     add_subdirectory(${loguru_SOURCE_DIR} ${loguru_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
+# CPP-HTTPLIB -----------------
+FetchContent_Declare(cpp-httplib
+    GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+    GIT_TAG v0.16.0
+)
+
+FetchContent_GetProperties(cpp-httplib)
+if(NOT cpp-httplib_POPULATED)
+    message(STATUS "Fetching cpp-httplib...")
+    FetchContent_Populate(cpp-httplib)
+    # add_subdirectory(${cpp-httplib_SOURCE_DIR} ${cpp-httplib_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 # -----------------------------
 
 add_executable(instruct
     src/main.cpp
     src/data.cpp
     src/setup.cpp
+    src/network.cpp
     src/security.cpp
 )
-target_include_directories(instruct PRIVATE src)
+
+# For some reason cpp-httplib needs be added manually and has other strange config issues.
+target_include_directories(instruct PRIVATE src ${cpp-httplib_SOURCE_DIR})
 
 target_link_libraries(instruct
     PRIVATE ftxui::screen
     PRIVATE ftxui::dom
     PRIVATE ftxui::component
     PRIVATE yaml-cpp::yaml-cpp
-    PRIVATE picosha2
+    PRIVATE picosha2 # Single header file.
     PRIVATE loguru::loguru
+    # PRIVATE cpp-httplib # Single header file.
     PRIVATE ${CMAKE_DL_LIBS}
 )
 

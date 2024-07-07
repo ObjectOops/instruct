@@ -1,5 +1,14 @@
 #include "security.hpp"
 
+bool instruct::sec::instanceActive() {
+    std::string url {
+        "http://localhost:" 
+        + std::to_string(instruct::Data::instructData->data[instruct::constants::INSTRUCTOR_PORT_KEY].as<int>())
+    };
+    DLOG_F(INFO, "Checking for active instance at: %s", url.c_str());
+    return instruct::net::ping(url);
+}
+
 bool instruct::sec::updateInstructPswd(const std::string &instructPswd) {
     try {
         instruct::Data::instructData->data["instructor_password_sha256"] 

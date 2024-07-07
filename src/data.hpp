@@ -7,6 +7,8 @@
 
 #include "yaml-cpp/yaml.h"
 
+#include "constants.hpp"
+
 namespace instruct {
     class Data {
         private:
@@ -23,6 +25,8 @@ namespace instruct {
         void saveData();
         
         inline static std::unique_ptr<Data> instructData;
+        
+        static void initAll();
     };
 }
 
