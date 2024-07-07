@@ -7,6 +7,7 @@ const instruct::setup::SetupError &instruct::setup::getSetupError() {
 bool instruct::setup::setupIncomplete() {
     bool pathExists {std::filesystem::exists(instruct::constants::DATA_DIR)};
     bool isDir {std::filesystem::is_directory(instruct::constants::DATA_DIR)};
+    DLOG_F(INFO, "Data path stat: %d %d", pathExists, isDir);
     return !(pathExists && isDir);
 }
 
@@ -59,5 +60,6 @@ bool instruct::setup::setDefaults() {
 }
 
 void instruct::setup::deleteDataDir() {
+    DLOG_F(INFO, "Deleted data dir.");
     std::filesystem::remove_all(instruct::constants::DATA_DIR);
 }

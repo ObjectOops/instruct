@@ -8,6 +8,8 @@
 #include <string>
 #include <memory>
 
+#include "loguru.hpp"
+
 #include "constants.hpp"
 #include "data.hpp"
 
