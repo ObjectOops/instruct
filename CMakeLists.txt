@@ -32,8 +32,7 @@ if(NOT ftxui_POPULATED)
     add_subdirectory(${ftxui_SOURCE_DIR} ${ftxui_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 # YAML-CPP --------------------
-FetchContent_Declare(
-    yaml-cpp
+FetchContent_Declare(yaml-cpp
     GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
     GIT_TAG 0.8.0
 )
@@ -45,8 +44,7 @@ if(NOT yaml-cpp_POPULATED)
     add_subdirectory(${yaml-cpp_SOURCE_DIR} ${yaml-cpp_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 # PICOSHA2 --------------------
-FetchContent_Declare(
-    picosha2
+FetchContent_Declare(picosha2
     GIT_REPOSITORY https://github.com/okdshin/PicoSHA2.git
     GIT_TAG 27fcf6979298949e8a462e16d09a0351c18fcaf2
 )
@@ -56,6 +54,18 @@ if(NOT picosha2_POPULATED)
     message(STATUS "Fetching picosha2...")
     FetchContent_Populate(picosha2)
     add_subdirectory(${picosha2_SOURCE_DIR} ${picosha2_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+# LOGURU ----------------------
+FetchContent_Declare(loguru
+    GIT_REPOSITORY https://github.com/emilk/loguru.git
+    GIT_TAG 4adaa185883e3c04da25913579c451d3c32cfac1
+)
+
+FetchContent_GetProperties(loguru)
+if(NOT loguru_POPULATED)
+    message(STATUS "Fetching loguru...")
+    FetchContent_Populate(loguru)
+    add_subdirectory(${loguru_SOURCE_DIR} ${loguru_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 # -----------------------------
 
@@ -73,6 +83,8 @@ target_link_libraries(instruct
     PRIVATE ftxui::component
     PRIVATE yaml-cpp::yaml-cpp
     PRIVATE picosha2
+    PRIVATE loguru::loguru
+    PRIVATE ${CMAKE_DL_LIBS}
 )
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")

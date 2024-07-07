@@ -4,6 +4,8 @@
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/component/component.hpp"
 
+#include "loguru.hpp"
+
 #include "constants.hpp"
 #include "terminal.hpp"
 #include "security.hpp"
@@ -13,7 +15,20 @@ namespace instruct {
     bool instructSetup(std::string);
 }
 
-int main() {
+int main(int argc, char **argv) {
+
+    loguru::g_stderr_verbosity = loguru::Verbosity_OFF;
+    loguru::g_preamble_uptime = false;
+    loguru::g_preamble_thread = false;
+    loguru::g_preamble_file = false;    
+    loguru::init(argc, argv);
+    loguru::add_file(
+        instruct::constants::LOG_DIR.c_str(), 
+        loguru::Truncate, 
+        loguru::Verbosity_MAX
+    );
+    
+    LOG_F(INFO, "Instruct launched.");
     
     // auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
     

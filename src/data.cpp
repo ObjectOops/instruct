@@ -11,5 +11,5 @@ void instruct::Data::saveData() {
     fout.exceptions(std::ofstream::failbit | std::ofstream::badbit);
     fout.open(filePath);
     fout << data;
-    fout.close();    
+    fout.close();
 }
