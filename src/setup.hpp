@@ -11,23 +11,25 @@
 #include "constants.hpp"
 #include "data.hpp"
 
-struct SetupError {
-    std::error_code errCode;
-    std::string msg, exMsg;
-};
+namespace Instruct::Setup {
+    struct SetupError {
+        std::error_code errCode;
+        std::string msg, exMsg;
+    };
 
-inline SetupError setupError {};
+    inline SetupError setupError {};
 
-const SetupError &getSetupError();
+    const SetupError &getSetupError();
 
-bool setupIncomplete();
+    bool setupIncomplete();
 
-bool createDataDir();
+    bool createDataDir();
 
-bool populateDataDir();
+    bool populateDataDir();
 
-bool setDefaults();
+    bool setDefaults();
 
-void deleteDataDir();
+    void deleteDataDir();
+}
 
 #endif

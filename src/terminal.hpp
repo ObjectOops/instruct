@@ -3,14 +3,14 @@
 
 #include <iostream>
 
-using namespace std;
+namespace Instruct::Terminal {
+    inline void enableAlternateScreenBuffer() {
+        std::cout << "\033[?1049h";
+    }
 
-inline void enableAlternateScreenBuffer() {
-    cout << "\033[?1049h";
-}
-
-inline void disableAlternateScreenBuffer() {
-    cout << "\033[?1049l";
+    inline void disableAlternateScreenBuffer() {
+        std::cout << "\033[?1049l";
+    }
 }
 
 #endif

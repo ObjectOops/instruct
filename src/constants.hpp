@@ -3,9 +3,11 @@
 
 #include <filesystem>
 
-inline const std::filesystem::path DATA_DIR {"instruct_data"};
-inline const std::filesystem::path INSTRUCTOR_CONFIG {DATA_DIR / "instructor_config.yaml"};
+namespace Instruct::Constants {
+    inline const std::filesystem::path DATA_DIR {"instruct_data"};
+    inline const std::filesystem::path INSTRUCTOR_CONFIG {DATA_DIR / "instructor_config.yaml"};
 
-inline constexpr int MAX_INSTRUCTOR_PASSWORD_LENGTH = 16;
+    inline constexpr int MAX_INSTRUCTOR_PASSWORD_LENGTH = 16;
+}
 
 #endif

@@ -12,6 +12,8 @@
 #include "setup.hpp"
 #include "data.hpp"
 
-bool updateInstructPswd(const std::string &);
+namespace Instruct::Security {
+    bool updateInstructPswd(const std::string &);
+}
 
 #endif
