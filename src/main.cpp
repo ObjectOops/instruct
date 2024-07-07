@@ -104,17 +104,7 @@ std::tuple<bool, int> instruct::setupMenu() {
     promptOptions.password = true;
     promptOptions.multiline = false;
     promptOptions.on_enter = continueSetup;
-    promptOptions.transform = [&] (ftxui::InputState state) {
-        state.element |= ftxui::color(ftxui::Color::White);
-        state.element |= ftxui::hcenter;
-        if (state.is_placeholder) {
-            state.element |= ftxui::dim;
-        }
-        if (!state.focused && state.hovered) {
-            state.element |= ftxui::bgcolor(ftxui::Color::GrayDark);
-        }
-        return state.element;
-    };
+    promptOptions.transform = instruct::constants::INPUT_TRANSFORM_CUSTOM;
     ftxui::Component instructPswdPrompt {ftxui::Input(promptOptions)};
     instructPswdPrompt |= ftxui::CatchEvent([&] (ftxui::Event event) {
         return event.is_character() 
