@@ -1,30 +1,30 @@
 #include "setup.hpp"
 
-const Instruct::Setup::SetupError &Instruct::Setup::getSetupError() {
-    return Instruct::Setup::setupError;
+const instruct::setup::SetupError &instruct::setup::getSetupError() {
+    return instruct::setup::setupError;
 }
 
-bool Instruct::Setup::setupIncomplete() {
-    bool pathExists {std::filesystem::exists(Instruct::Constants::DATA_DIR)};
-    bool isDir {std::filesystem::is_directory(Instruct::Constants::DATA_DIR)};
+bool instruct::setup::setupIncomplete() {
+    bool pathExists {std::filesystem::exists(instruct::constants::DATA_DIR)};
+    bool isDir {std::filesystem::is_directory(instruct::constants::DATA_DIR)};
     return !(pathExists && isDir);
 }
 
-bool Instruct::Setup::createDataDir() {
+bool instruct::setup::createDataDir() {
     bool success {
         std::filesystem::create_directory(
-            Instruct::Constants::DATA_DIR, Instruct::Setup::setupError.errCode
+            instruct::constants::DATA_DIR, instruct::setup::setupError.errCode
         )
     };
     if (!success) {
-        Instruct::Setup::setupError.msg = "Failed to create data directory.";
+        instruct::setup::setupError.msg = "Failed to create data directory.";
     }
     return success;
 }
 
-bool Instruct::Setup::populateDataDir() {
+bool instruct::setup::populateDataDir() {
     std::filesystem::path paths [] {
-        Instruct::Constants::INSTRUCTOR_CONFIG
+        instruct::constants::INSTRUCTOR_CONFIG
     };
     for (std::filesystem::path &path : paths) {
         try {
@@ -33,9 +33,9 @@ bool Instruct::Setup::populateDataDir() {
             fout.open(path);
             fout.close();
         } catch (const std::exception &e) {
-            Instruct::Setup::setupError.errCode = std::make_error_code(std::errc::io_error);
-            Instruct::Setup::setupError.exMsg = e.what();
-            Instruct::Setup::setupError.msg = 
+            instruct::setup::setupError.errCode = std::make_error_code(std::errc::io_error);
+            instruct::setup::setupError.exMsg = e.what();
+            instruct::setup::setupError.msg = 
                 "Failed to create file `" + std::string {path} + "`.";
             return false;
         }
@@ -43,21 +43,21 @@ bool Instruct::Setup::populateDataDir() {
     return true;
 }
 
-bool Instruct::Setup::setDefaults() {
+bool instruct::setup::setDefaults() {
     try {
-        Instruct::Data::instructData = 
-            std::make_unique<Instruct::Data>(Instruct::Constants::INSTRUCTOR_CONFIG);
-        Instruct::Data::instructData->data["instructor_port"] = 3000;
-        Instruct::Data::instructData->saveData();
+        instruct::Data::instructData = 
+            std::make_unique<instruct::Data>(instruct::constants::INSTRUCTOR_CONFIG);
+        instruct::Data::instructData->data["instructor_port"] = 3000;
+        instruct::Data::instructData->saveData();
     } catch (const std::exception &e) {
-        Instruct::Setup::setupError.errCode = std::make_error_code(std::errc::io_error);
-        Instruct::Setup::setupError.exMsg = e.what();
-        Instruct::Setup::setupError.msg = "Failed to set defaults.";
+        instruct::setup::setupError.errCode = std::make_error_code(std::errc::io_error);
+        instruct::setup::setupError.exMsg = e.what();
+        instruct::setup::setupError.msg = "Failed to set defaults.";
         return false;
     }
     return true;
 }
 
-void Instruct::Setup::deleteDataDir() {
-    std::filesystem::remove_all(Instruct::Constants::DATA_DIR);
+void instruct::setup::deleteDataDir() {
+    std::filesystem::remove_all(instruct::constants::DATA_DIR);
 }

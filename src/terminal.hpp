@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-namespace Instruct::Terminal {
+namespace instruct::term {
     inline void enableAlternateScreenBuffer() {
         std::cout << "\033[?1049h";
     }

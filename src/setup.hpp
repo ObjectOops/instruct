@@ -11,7 +11,7 @@
 #include "constants.hpp"
 #include "data.hpp"
 
-namespace Instruct::Setup {
+namespace instruct::setup {
     struct SetupError {
         std::error_code errCode;
         std::string msg, exMsg;

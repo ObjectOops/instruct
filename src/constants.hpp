@@ -3,7 +3,7 @@
 
 #include <filesystem>
 
-namespace Instruct::Constants {
+namespace instruct::constants {
     inline const std::filesystem::path DATA_DIR {"instruct_data"};
     inline const std::filesystem::path INSTRUCTOR_CONFIG {DATA_DIR / "instructor_config.yaml"};
 

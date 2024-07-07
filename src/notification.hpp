@@ -3,7 +3,7 @@
 
 #include <string>
 
-namespace Instruct::Notification {
+namespace instruct::notif {
     inline std::string notification {};
     inline bool notice {false};
 

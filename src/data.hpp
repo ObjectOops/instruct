@@ -7,7 +7,7 @@
 
 #include "yaml-cpp/yaml.h"
 
-namespace Instruct {
+namespace instruct {
     class Data {
         private:
         std::filesystem::path filePath;

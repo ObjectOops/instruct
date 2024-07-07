@@ -12,7 +12,7 @@
 #include "setup.hpp"
 #include "data.hpp"
 
-namespace Instruct::Security {
+namespace instruct::sec {
     bool updateInstructPswd(const std::string &);
 }
 

@@ -9,7 +9,7 @@
 #include "security.hpp"
 #include "setup.hpp"
 
-namespace Instruct {
+namespace instruct {
     bool instructSetup(std::string);
 }
 
@@ -17,7 +17,7 @@ int main() {
     
     // auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
     
-    if (Instruct::Setup::setupIncomplete()) {
+    if (instruct::setup::setupIncomplete()) {
         auto setupScreen {ftxui::ScreenInteractive::Fullscreen()};
         
         ftxui::Element h1 {ftxui::text("Instruct Set Up")};
@@ -27,7 +27,7 @@ int main() {
         bool setupSuccess {false};
         auto continueSetup {[&] {
             setupScreen.WithRestoredIO([&] {
-                setupSuccess = Instruct::instructSetup(instructPswd);
+                setupSuccess = instruct::instructSetup(instructPswd);
             })();
             // Exit must be scheduled without restored I/O.
             setupScreen.Exit();
@@ -50,7 +50,7 @@ int main() {
         ftxui::Component instructPswdPrompt {ftxui::Input(promptOptions)};
         instructPswdPrompt |= ftxui::CatchEvent([&] (ftxui::Event event) {
             return event.is_character() 
-                && instructPswd.length() > Instruct::Constants::MAX_INSTRUCTOR_PASSWORD_LENGTH;
+                && instructPswd.length() > instruct::constants::MAX_INSTRUCTOR_PASSWORD_LENGTH;
         });
         
         ftxui::ButtonOption confirmOptions {ftxui::ButtonOption::Ascii()};
@@ -115,7 +115,6 @@ int main() {
     
     // auto app {ftxui::Renderer()}
     
-    // Do namespace things once setup has been cleared.
         /*
         Also scroll the setup output.
         */
@@ -128,8 +127,8 @@ int main() {
     return 0;
 }
 
-bool Instruct::instructSetup(std::string instructPswd) {
-    Instruct::Terminal::enableAlternateScreenBuffer();
+bool instruct::instructSetup(std::string instructPswd) {
+    instruct::term::enableAlternateScreenBuffer();
     
     auto nestedSetupScreen {ftxui::Screen::Create(ftxui::Dimension::Full())};
 
@@ -147,7 +146,7 @@ bool Instruct::instructSetup(std::string instructPswd) {
     }};
     auto handleStep {[&] (bool stepSuccess) {
         if (!stepSuccess) {
-            const Instruct::Setup::SetupError &setupError {Instruct::Setup::getSetupError()};
+            const instruct::setup::SetupError &setupError {instruct::setup::getSetupError()};
             std::string setupErrorStr {
                 "An error occurred: " 
                 + (setupError.errCode.value() != 0 ? 
@@ -161,9 +160,9 @@ bool Instruct::instructSetup(std::string instructPswd) {
                     : " | No exception.")
                 + " | Message: " + setupError.msg
             };
-            Instruct::Terminal::disableAlternateScreenBuffer();
+            instruct::term::disableAlternateScreenBuffer();
             std::cerr << setupErrorStr << '\n';
-            Instruct::Terminal::enableAlternateScreenBuffer();
+            instruct::term::enableAlternateScreenBuffer();
             displayProgress(setupErrorStr, true);
             displayProgress("Press [Enter] to exit.");
             std::cin.get();
@@ -173,31 +172,31 @@ bool Instruct::instructSetup(std::string instructPswd) {
     }};
     auto setupFail {[&] {
         displayProgress("Deleting data directory.");
-        Instruct::Setup::deleteDataDir();
+        instruct::setup::deleteDataDir();
     }};
     
     displayProgress(
-        "Creating data directory `" + std::string {Instruct::Constants::DATA_DIR} + "`."
+        "Creating data directory `" + std::string {instruct::constants::DATA_DIR} + "`."
     );
-    if (!handleStep(Instruct::Setup::createDataDir())) {
+    if (!handleStep(instruct::setup::createDataDir())) {
         return false;
     }
     
     displayProgress("Populating data directory.");
-    if (!handleStep(Instruct::Setup::populateDataDir())) {
+    if (!handleStep(instruct::setup::populateDataDir())) {
         setupFail();
         return false;
     }
     
     displayProgress("Setting defaults.");
-    if (!handleStep(Instruct::Setup::setDefaults())) {
+    if (!handleStep(instruct::setup::setDefaults())) {
         setupFail();
         return false;
     }
     
     displayProgress("Setting instructor password: " 
         + instructPswd + " length " + std::to_string(instructPswd.length()));
-    if (!handleStep(Instruct::Security::updateInstructPswd(instructPswd))) {
+    if (!handleStep(instruct::sec::updateInstructPswd(instructPswd))) {
         setupFail();
         return false;
     }
@@ -205,6 +204,6 @@ bool Instruct::instructSetup(std::string instructPswd) {
     displayProgress("Press [Enter] to complete set up.");
     std::cin.get();
     
-    Instruct::Terminal::disableAlternateScreenBuffer();
+    instruct::term::disableAlternateScreenBuffer();
     return true;
 }
