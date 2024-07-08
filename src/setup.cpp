@@ -45,10 +45,14 @@ bool instruct::setup::populateDataDir() {
 }
 
 bool instruct::setup::setDefaults() {
+    using D = instruct::Data;
+    using namespace instruct::constants;
     try {
-        instruct::Data::initAll();
-        instruct::Data::instructData->data[instruct::constants::INSTRUCTOR_PORT_KEY] = 3000;
-        instruct::Data::instructData->saveData();
+        D::initAll();
+        D::instructData->data[INSTRUCTOR_HOST_KEY] = "0.0.0.0";
+        D::instructData->data[INSTRUCTOR_AUTH_PORT_KEY] = 8000;
+        D::instructData->data[INSTRUCTOR_OPENVSCODE_SERVER_PORT_KEY] = 3000;
+        D::instructData->saveData();
     } catch (const std::exception &e) {
         instruct::setup::setupError.errCode = std::make_error_code(std::errc::io_error);
         instruct::setup::setupError.exMsg = e.what();

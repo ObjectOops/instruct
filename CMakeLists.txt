@@ -85,7 +85,6 @@ add_executable(instruct
     src/main.cpp
     src/data.cpp
     src/setup.cpp
-    src/network.cpp
     src/security.cpp
 )
 

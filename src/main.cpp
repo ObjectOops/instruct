@@ -1,3 +1,5 @@
+#include <filesystem>
+#include <exception>
 #include <iostream>
 #include <string>
 #include <tuple>
@@ -17,6 +19,7 @@ namespace instruct {
     void logVersion();
     std::tuple<bool, int> setupMenu();
     bool instructSetup(std::string);
+    bool initAllHandled();
 }
 
 int main(int argc, char **argv) {
@@ -36,14 +39,23 @@ int main(int argc, char **argv) {
         }
     }
     
-    instruct::Data::initAll();
+    LOG_F(1, "Reading data.");
+    if (!instruct::initAllHandled()) {
+        LOG_F(INFO, "Exiting.");
+        return 1;
+    }
     if (instruct::sec::instanceActive()) {
-        LOG_F(1, "Already running. Exiting.");
+        LOG_F(INFO, "Already running. Exiting.");
         std::cout << "Detected an instance of instruct already running.\n";
         return 1;
     }
+    instruct::sec::createInstance();
+    LOG_F(1, "Instance locked.");
+    
+    sleep(60);
     
     // Check if another instance is already running.
+    // Make YAML better.
     // auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
     // auto app {ftxui::Renderer()}
     // Also reset appScreen cursor manually.
@@ -253,5 +265,33 @@ bool instruct::instructSetup(std::string instructPswd) {
     std::cin.get();
     
     instruct::term::disableAlternateScreenBuffer();
+    return true;
+}
+
+bool instruct::initAllHandled() {
+    try {
+        instruct::Data::initAll();
+    } catch (const std::exception &e) {
+        try {
+            std::filesystem::rename(
+                instruct::constants::DATA_DIR, 
+                std::string {instruct::constants::DATA_DIR} + "_copy"
+            );
+            std::string msg {R"(Possible data corruption detected.
+To avoid a loss of information, restart the instruct setup.
+Then, manually resolve your data from `)" 
++ std::string {instruct::constants::DATA_DIR} + "_copy`."};
+            LOG_F(ERROR, msg.c_str());
+            std::cerr << msg << '\n';
+        } catch (const std::exception &e2) {
+            std::string msg {R"(Possible data corruption detected.
+To avoid a loss of information, backup `)" + std::string {instruct::constants::DATA_DIR} 
++ R"(` and restart the instruct setup.
+Then, manually resolve your data from the backup.)"};
+            LOG_F(ERROR, msg.c_str());
+            std::cerr << msg << '\n';
+        }
+        return false;
+    }
     return true;
 }

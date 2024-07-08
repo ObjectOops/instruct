@@ -11,7 +11,11 @@ namespace instruct::constants {
     inline const std::filesystem::path LOG_DIR {"instruct.log"};
 
     inline const std::filesystem::path INSTRUCTOR_CONFIG {DATA_DIR / "instructor_config.yaml"};
-    inline const std::string INSTRUCTOR_PORT_KEY = "instructor_port";
+
+    inline const std::string INSTRUCTOR_HOST_KEY {"instructor_auth_host"};
+    inline const std::string INSTRUCTOR_AUTH_PORT_KEY = "instructor_auth_port";
+    inline const std::string INSTRUCTOR_OPENVSCODE_SERVER_PORT_KEY = 
+        "instructor_openvscode_server_port";
 
     inline constexpr int MAX_INSTRUCTOR_PASSWORD_LENGTH = 16;
     
