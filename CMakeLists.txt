@@ -62,6 +62,9 @@ FetchContent_Declare(loguru
 )
 
 FetchContent_GetProperties(loguru)
+
+set(LOGURU_WITH_STREAMS TRUE) # For stream logging.
+
 if(NOT loguru_POPULATED)
     message(STATUS "Fetching loguru...")
     FetchContent_Populate(loguru)

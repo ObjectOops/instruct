@@ -1,13 +1,22 @@
+#include <thread>
+
+#include "picosha2.h"
+#include "loguru.hpp"
+#include "httplib.h"
+
+#include "notification.hpp"
 #include "security.hpp"
+#include "setup.hpp"
+#include "data.hpp"
+
+#include "httplib.h"
+
+using namespace instruct;
 
 const std::string ALIVE_CODE {"Instruct Alive"};
 
-bool instruct::sec::instanceActive() {
-    std::string port = std::to_string(
-        instruct::Data::instructData->data[
-            instruct::constants::INSTRUCTOR_AUTH_PORT_KEY
-        ].as<int>()
-    );
+bool sec::instanceActive() {
+    std::string port = std::to_string(IData::data->authPort);
     std::string url {"http://localhost:" + port};
     DLOG_F(INFO, "Checking for active instance at: %s", url.c_str());
 
@@ -23,7 +32,7 @@ bool instruct::sec::instanceActive() {
     
     return isGood;
 }
-void instruct::sec::createInstance() {
+void sec::createInstance() {
     std::thread worker {[&] {
         httplib::Server server {};
         server.Get(
@@ -34,29 +43,24 @@ void instruct::sec::createInstance() {
             }
         );
         server.listen(
-            instruct::Data::instructData->data[
-                instruct::constants::INSTRUCTOR_HOST_KEY
-            ].as<std::string>(), 
-            instruct::Data::instructData->data[
-                instruct::constants::INSTRUCTOR_AUTH_PORT_KEY
-            ].as<int>()
+            IData::data->authHost, 
+            IData::data->authPort
         );
     }};
     worker.detach();
 }
 
-bool instruct::sec::updateInstructPswd(const std::string &instructPswd) {
+bool sec::updateInstructPswd(const std::string &instructPswd) {
     try {
-        instruct::Data::instructData->data["instructor_password_sha256"] 
-            = picosha2::hash256_hex_string(instructPswd);
-        instruct::Data::instructData->saveData();
+        IData::data->pswdSHA256 = picosha2::hash256_hex_string(instructPswd);
+        IData::data->saveData();
     } catch (const std::exception &e) {
         // Only relevant during initial set up.
-        instruct::setup::setupError.errCode = std::make_error_code(std::errc::io_error);
-        instruct::setup::setupError.exMsg = e.what();
-        instruct::setup::setupError.msg = "Failed to save instructor password.";
+        setup::setupError.errCode = std::make_error_code(std::errc::io_error);
+        setup::setupError.exMsg = e.what();
+        setup::setupError.msg = "Failed to save instructor password.";
         
-        instruct::notif::setNotification(
+        notif::setNotification(
             "Failed to save password. Your new password will only be used during this session."
         );
         return false;

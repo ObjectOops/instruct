@@ -2,16 +2,7 @@
 #define INSTRUCT_SETUP_HPP
 
 #include <system_error>
-#include <filesystem>
-#include <exception>
-#include <fstream>
 #include <string>
-#include <memory>
-
-#include "loguru.hpp"
-
-#include "constants.hpp"
-#include "data.hpp"
 
 namespace instruct::setup {
     struct SetupError {

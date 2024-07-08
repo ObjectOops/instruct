@@ -4,6 +4,10 @@
 #include <string>
 #include <tuple>
 
+#ifdef DEBUG
+#include <unistd.h>
+#endif
+
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/component/component.hpp"
 
@@ -13,6 +17,7 @@
 #include "terminal.hpp"
 #include "security.hpp"
 #include "setup.hpp"
+#include "data.hpp"
 
 namespace instruct {
     void configureLogging(int, char **);
@@ -54,8 +59,6 @@ int main(int argc, char **argv) {
     
     sleep(60);
     
-    // Check if another instance is already running.
-    // Make YAML better.
     // auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
     // auto app {ftxui::Renderer()}
     // Also reset appScreen cursor manually.
@@ -248,6 +251,8 @@ bool instruct::instructSetup(std::string instructPswd) {
         return false;
     }
     
+    instruct::Data::initEmpty();
+    
     displayProgress("Setting defaults.");
     if (!handleStep(instruct::setup::setDefaults())) {
         setupFail();
@@ -280,15 +285,19 @@ bool instruct::initAllHandled() {
             std::string msg {R"(Possible data corruption detected.
 To avoid a loss of information, restart the instruct setup.
 Then, manually resolve your data from `)" 
-+ std::string {instruct::constants::DATA_DIR} + "_copy`."};
++ std::string {instruct::constants::DATA_DIR} + R"(_copy`.
+See the log file for more details.)"};
             LOG_F(ERROR, msg.c_str());
+            LOG_F(ERROR, e.what());
             std::cerr << msg << '\n';
         } catch (const std::exception &e2) {
             std::string msg {R"(Possible data corruption detected.
 To avoid a loss of information, backup `)" + std::string {instruct::constants::DATA_DIR} 
 + R"(` and restart the instruct setup.
-Then, manually resolve your data from the backup.)"};
+Then, manually resolve your data from the backup.
+See the log file for more details.)"};
             LOG_F(ERROR, msg.c_str());
+            LOG_F(ERROR, e.what());
             std::cerr << msg << '\n';
         }
         return false;

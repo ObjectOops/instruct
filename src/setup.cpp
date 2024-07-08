@@ -1,31 +1,42 @@
-#include "setup.hpp"
+#include <filesystem>
+#include <exception>
+#include <fstream>
+#include <memory>
 
-const instruct::setup::SetupError &instruct::setup::getSetupError() {
-    return instruct::setup::setupError;
+#include "loguru.hpp"
+
+#include "constants.hpp"
+#include "setup.hpp"
+#include "data.hpp"
+
+using namespace instruct;
+
+const setup::SetupError &setup::getSetupError() {
+    return setupError;
 }
 
-bool instruct::setup::setupIncomplete() {
-    bool pathExists {std::filesystem::exists(instruct::constants::DATA_DIR)};
-    bool isDir {std::filesystem::is_directory(instruct::constants::DATA_DIR)};
+bool setup::setupIncomplete() {
+    bool pathExists {std::filesystem::exists(constants::DATA_DIR)};
+    bool isDir {std::filesystem::is_directory(constants::DATA_DIR)};
     DLOG_F(INFO, "Data path stat: %d %d", pathExists, isDir);
     return !(pathExists && isDir);
 }
 
-bool instruct::setup::createDataDir() {
+bool setup::createDataDir() {
     bool success {
         std::filesystem::create_directory(
-            instruct::constants::DATA_DIR, instruct::setup::setupError.errCode
+            constants::DATA_DIR, setupError.errCode
         )
     };
     if (!success) {
-        instruct::setup::setupError.msg = "Failed to create data directory.";
+        setupError.msg = "Failed to create data directory.";
     }
     return success;
 }
 
-bool instruct::setup::populateDataDir() {
+bool setup::populateDataDir() {
     std::filesystem::path paths [] {
-        instruct::constants::INSTRUCTOR_CONFIG
+        constants::INSTRUCTOR_CONFIG
     };
     for (std::filesystem::path &path : paths) {
         try {
@@ -34,9 +45,9 @@ bool instruct::setup::populateDataDir() {
             fout.open(path);
             fout.close();
         } catch (const std::exception &e) {
-            instruct::setup::setupError.errCode = std::make_error_code(std::errc::io_error);
-            instruct::setup::setupError.exMsg = e.what();
-            instruct::setup::setupError.msg = 
+            setupError.errCode = std::make_error_code(std::errc::io_error);
+            setupError.exMsg = e.what();
+            setupError.msg = 
                 "Failed to create file `" + std::string {path} + "`.";
             return false;
         }
@@ -44,25 +55,24 @@ bool instruct::setup::populateDataDir() {
     return true;
 }
 
-bool instruct::setup::setDefaults() {
-    using D = instruct::Data;
-    using namespace instruct::constants;
+bool setup::setDefaults() {
     try {
-        D::initAll();
-        D::instructData->data[INSTRUCTOR_HOST_KEY] = "0.0.0.0";
-        D::instructData->data[INSTRUCTOR_AUTH_PORT_KEY] = 8000;
-        D::instructData->data[INSTRUCTOR_OPENVSCODE_SERVER_PORT_KEY] = 3000;
-        D::instructData->saveData();
+        IData::data->authHost = "0.0.0.0";
+        IData::data->authPort = 8000;
+        IData::data->ovscsPort = 3000;
+        DLOG_F(INFO, "Assigned default data.");
+        IData::data->saveData();
+        DLOG_F(INFO, "Saved default data.");
     } catch (const std::exception &e) {
-        instruct::setup::setupError.errCode = std::make_error_code(std::errc::io_error);
-        instruct::setup::setupError.exMsg = e.what();
-        instruct::setup::setupError.msg = "Failed to set defaults.";
+        setupError.errCode = std::make_error_code(std::errc::io_error);
+        setupError.exMsg = e.what();
+        setupError.msg = "Failed to set defaults.";
         return false;
     }
     return true;
 }
 
-void instruct::setup::deleteDataDir() {
+void setup::deleteDataDir() {
     DLOG_F(INFO, "Deleted data dir.");
-    std::filesystem::remove_all(instruct::constants::DATA_DIR);
+    std::filesystem::remove_all(constants::DATA_DIR);
 }

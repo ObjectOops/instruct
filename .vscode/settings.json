@@ -60,6 +60,23 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "any": "cpp",
+        "bitset": "cpp",
+        "cstring": "cpp",
+        "forward_list": "cpp",
+        "set": "cpp",
+        "unordered_set": "cpp",
+        "buffer": "cpp",
+        "executor": "cpp",
+        "internet": "cpp",
+        "io_context": "cpp",
+        "netfwd": "cpp",
+        "regex": "cpp",
+        "socket": "cpp",
+        "timer": "cpp",
+        "fstream": "cpp",
+        "future": "cpp",
+        "valarray": "cpp"
     }
 }
