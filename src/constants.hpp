@@ -7,6 +7,12 @@
 #include "ftxui/component/component_options.hpp"
 
 namespace instruct::constants {
+    #ifdef __INSTRUCT_VERSION__
+    const std::string INSTRUCT_VERSION = #__INSTRUCT_VERSION__;
+    #else
+    const std::string INSTRUCT_VERSION = "Unknown";
+    #endif
+    
     inline const std::filesystem::path DATA_DIR {"instruct_data"};
     inline const std::filesystem::path LOG_DIR {"logs"};
     

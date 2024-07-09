@@ -2,6 +2,7 @@
 #include <exception>
 #include <iostream>
 #include <string>
+#include <vector>
 #include <tuple>
 
 #include "ftxui/component/screen_interactive.hpp"
@@ -87,13 +88,7 @@ void instruct::configureLogging(int argc, char **argv) {
 }
 
 void instruct::logVersion() {
-    std::string ver;
-    #ifdef INSTRUCT_VERSION
-    ver = #INSTRUCT_VERSION;
-    #else
-    ver = "Unknown";
-    #endif
-    LOG_F(INFO, "Instruct Version: %s", ver.c_str());
+    LOG_F(INFO, "Instruct Version: %s", instruct::constants::INSTRUCT_VERSION.c_str());
 }
 
 std::tuple<bool, int> instruct::setupMenu() {
@@ -328,14 +323,113 @@ Afterwards, you can import your list of students.
 
 This message will only show once.)");
     }
+
+    // These are button labels which need to change dynamically.
+    struct {
+        const char *icblStart {"Instructor (Start)"};
+        const char *icblStop {"Instructor (Stop)"};
+        const char *scblStart {"Student (Start All)"};
+        const char *scblStop {"Student (Stop All)"};
+        const char *ratbl {"Run All Tests"};
+        const char *satbl {"Stop All Tests"};
+    } dynamicLabels;
+    std::string instructorCodeButtonLabel {dynamicLabels.icblStart};
+    std::string studentCodeButtonLabel {dynamicLabels.scblStart};
+    std::string runAllTestsButtonLabel {dynamicLabels.ratbl};
+    // ---------------------------------------------------------
     
-    // std::string instructorCodeButtonLabel {"Instructor (Start)"};
+    struct TitleBarButtonContents {
+        ftxui::ConstStringRef label;
+        ftxui::Closure on_click;
+    };
+    struct TitleBarMenuContents {
+        std::string label;
+        std::vector<TitleBarButtonContents> options;
+    };
+    std::vector<TitleBarMenuContents> titleBarMenuContents {
+        {
+            "Code", {
+                {
+                    instructorCodeButtonLabel, 
+                    [&] {}
+                }, 
+                {
+                    studentCodeButtonLabel, 
+                    [&] {}
+                }
+            }
+        }, 
+        {
+            "Tools", {
+                {
+                    "Add File", 
+                    [] {}
+                }, 
+                {
+                    "Remove File", 
+                    [] {}
+                }, 
+                {
+                    "Add Student", 
+                    [] {}
+                }, 
+                {
+                    "Remove Student", 
+                    [] {}
+                }
+            }
+        }, 
+        {
+            "Tests", {
+                {
+                    runAllTestsButtonLabel, 
+                    [&] {}
+                }, 
+                {
+                    "Add Test", 
+                    [] {}
+                }, 
+                {
+                    "Remove Test", 
+                    [] {}
+                }
+            }, 
+        }, 
+        {
+            "Set Up", {
+                {
+                    "Import Students List", 
+                    [] {}
+                }, 
+                {
+                    "Export Students List", 
+                    [] {}
+                }, 
+                {
+                    "Install OpenVsCode Server", 
+                    [] {}
+                }
+            }
+        }
+    };
+    ftxui::Components titleBarMenus {};
+    for (auto &menuContents : titleBarMenuContents) {
+        ftxui::Components buttons {};
+        for (auto &buttonContents : menuContents.options) {
+            buttons.push_back(ftxui::Button(
+                buttonContents.label, buttonContents.on_click, ftxui::ButtonOption::Ascii()
+            ));
+        }
+        titleBarMenus.push_back(
+            ftxui::Collapsible(menuContents.label, ftxui::Container::Vertical(buttons))
+        );
+    }
+    
     // ftxui::Component instructorCodeButton {ftxui::Button(&instructorCodeButtonLabel, [&] {
-    //     instructorCodeButtonLabel = "Instructor (Stop)";
+    //     instructorCodeButtonLabel = dynamicLabels.icblStop;
     // }, ftxui::ButtonOption::Ascii())};
-    // std::string studentCodeButtonLabel {"Student (Start All)"};
     // ftxui::Component studentCodeButton {ftxui::Button(&studentCodeButtonLabel, [&] {
-    //     studentCodeButtonLabel = "Student (Stop All)";
+    //     studentCodeButtonLabel = dynamicLabels.scblStop;
     // }, ftxui::ButtonOption::Ascii())};
     // ftxui::Component codeDropdown {ftxui::Collapsible("Code", 
     //     ftxui::Container::Vertical({instructorCodeButton, studentCodeButton})
