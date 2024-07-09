@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <string>
 
 #include "yaml-cpp/yaml.h"
 
@@ -23,6 +24,7 @@ namespace instruct {
 
         static void initEmpty();
         static void initAll();
+        static void saveAll();
     };
     class IData : public Data {
         public:
@@ -32,10 +34,11 @@ namespace instruct {
         
         std::string authHost;
         int authPort;
-        int ovscsPort;
+        int codePort;
         std::string pswdSHA256;
+        bool firstTime;
         
-        inline static std::unique_ptr<IData> data;
+        inline static std::unique_ptr<IData> instructorData;
     };
 }
 

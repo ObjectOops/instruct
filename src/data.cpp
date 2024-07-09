@@ -8,6 +8,14 @@
 
 using namespace instruct;
 
+namespace keys {
+    const std::string AUTH_HOST {"auth_host"};
+    const std::string AUTH_PORT {keys::AUTH_PORT};
+    const std::string CODE_PORT {keys::CODE_PORT};
+    const std::string PASSWORD_SHA256 {keys::PASSWORD_SHA256};
+    const std::string FIRST_TIME {keys::FIRST_TIME};
+}
+
 Data::Data(const std::filesystem::path &filePath) : 
     filePath {filePath}, 
     yaml {YAML::LoadFile(filePath)} 
@@ -23,28 +31,34 @@ void Data::saveData() {
 }
 
 void Data::initEmpty() {
-    IData::data = std::make_unique<IData>();
-    IData::data->filePath = constants::INSTRUCTOR_CONFIG;
+    IData::instructorData = std::make_unique<IData>();
+    IData::instructorData->filePath = constants::INSTRUCTOR_CONFIG;
 }
 
 void Data::initAll() {
-    IData::data = std::make_unique<IData>(constants::INSTRUCTOR_CONFIG);
+    IData::instructorData = std::make_unique<IData>(constants::INSTRUCTOR_CONFIG);
     
-    LOG_S(INFO) << "Instructor config data: \n" << IData::data->yaml;
+    LOG_S(INFO) << "Instructor config data: \n" << IData::instructorData->yaml;
+}
+
+void Data::saveAll() {
+    IData::instructorData->saveData();
 }
 
 IData::IData(const std::filesystem::path &filePath) : Data {filePath} {
-    authHost = yaml["auth_host"].as<std::string>();
-    authPort = yaml["auth_port"].as<int>();
-    ovscsPort = yaml["openvscode_server_port"].as<int>();
-    pswdSHA256 = yaml["password_sha256"].as<std::string>();
+    authHost = yaml[keys::AUTH_HOST].as<std::string>();
+    authPort = yaml[keys::AUTH_PORT].as<int>();
+    codePort = yaml[keys::CODE_PORT].as<int>();
+    pswdSHA256 = yaml[keys::PASSWORD_SHA256].as<std::string>();
+    firstTime = yaml[keys::FIRST_TIME].as<bool>();
 }
 
 void IData::saveData() {
-    yaml["auth_host"] = authHost;
-    yaml["auth_port"] = authPort;
-    yaml["openvscode_server_port"] = ovscsPort;
-    yaml["password_sha256"] = pswdSHA256;
+    yaml[keys::AUTH_HOST] = authHost;
+    yaml[keys::AUTH_PORT] = authPort;
+    yaml[keys::CODE_PORT] = codePort;
+    yaml[keys::PASSWORD_SHA256] = pswdSHA256;
+    yaml[keys::FIRST_TIME] = firstTime;
     
     Data::saveData();
 }

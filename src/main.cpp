@@ -4,15 +4,12 @@
 #include <string>
 #include <tuple>
 
-#ifdef DEBUG
-#include <unistd.h>
-#endif
-
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/component/component.hpp"
 
 #include "loguru.hpp"
 
+#include "notification.hpp"
 #include "constants.hpp"
 #include "terminal.hpp"
 #include "security.hpp"
@@ -25,6 +22,8 @@ namespace instruct {
     std::tuple<bool, int> setupMenu();
     bool instructSetup(std::string);
     bool initAllHandled();
+    bool mainMenu();
+    bool saveAllHandled();
 }
 
 int main(int argc, char **argv) {
@@ -47,27 +46,28 @@ int main(int argc, char **argv) {
     LOG_F(1, "Reading data.");
     if (!instruct::initAllHandled()) {
         LOG_F(INFO, "Exiting.");
-        return 1;
+        return EXIT_FAILURE;
     }
     if (instruct::sec::instanceActive()) {
         LOG_F(INFO, "Already running. Exiting.");
         std::cout << "Detected an instance of instruct already running.\n";
-        return 1;
+        return EXIT_FAILURE;
     }
     instruct::sec::createInstance();
     LOG_F(1, "Instance locked.");
     
-    sleep(60);
+    LOG_F(INFO, "Starting main application");
+    instruct::mainMenu();
     
-    // auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
-    // auto app {ftxui::Renderer()}
-    // Also reset appScreen cursor manually.
-    // appScreen.Exit();
-    // appScreen.Loop();
+    LOG_F(INFO, "Finalizing save data.");
+    if (!instruct::saveAllHandled()) {
+        LOG_F(INFO, "Exiting.");
+        return EXIT_FAILURE;
+    }
     
-    LOG_F(INFO, "Exiting.");
+    LOG_F(INFO, "Exiting main application.");
     
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 void instruct::configureLogging(int argc, char **argv) {
@@ -80,7 +80,7 @@ void instruct::configureLogging(int argc, char **argv) {
     // loguru::init(argc, argv);
     
     loguru::add_file(
-        instruct::constants::LOG_DIR.c_str(), 
+        instruct::constants::INSTRUCT_LOG_DIR.c_str(), 
         loguru::Truncate, 
         argc == 2 && argv[1] == "-v"s ? loguru::Verbosity_MAX : loguru::Verbosity_INFO
     );
@@ -133,25 +133,13 @@ std::tuple<bool, int> instruct::setupMenu() {
             && instructPswd.length() > instruct::constants::MAX_INSTRUCTOR_PASSWORD_LENGTH;
     });
 
-    ftxui::ButtonOption confirmOptions {ftxui::ButtonOption::Ascii()};
-    confirmOptions.label = "Confirm";
-    confirmOptions.on_click = continueSetup;
-    confirmOptions.transform = [] (ftxui::EntryState state) {
-        return ftxui::ButtonOption::Ascii().transform(state) 
-            | ftxui::hcenter 
-            | ftxui::color(ftxui::Color::GreenYellow);
-    };
-    ftxui::Component confirmButton {ftxui::Button(confirmOptions)};
-
-    ftxui::ButtonOption cancelOptions {ftxui::ButtonOption::Ascii()};
-    cancelOptions.label = "Cancel";
-    cancelOptions.on_click = cancelSetup;
-    cancelOptions.transform = [] (ftxui::EntryState state) {
-        return ftxui::ButtonOption::Ascii().transform(state) 
-            | ftxui::hcenter 
-            | ftxui::color(ftxui::Color::Red);
-    };
-    ftxui::Component cancelButton {ftxui::Button(cancelOptions)};
+    ftxui::Component confirmButton {ftxui::Button(
+        "Confirm", continueSetup, ftxui::ButtonOption::Ascii()
+    )};
+    ftxui::Component cancelButton {ftxui::Button(
+        "Cancel", cancelSetup, ftxui::ButtonOption::Ascii()
+    )};
+    
     ftxui::Component setup {
         ftxui::Renderer(
             ftxui::Container::Vertical({
@@ -166,8 +154,16 @@ std::tuple<bool, int> instruct::setupMenu() {
                     h2, 
                     ftxui::window(ftxui::text("Password"), instructPswdPrompt->Render()), 
                     ftxui::hbox(
-                        confirmButton->Render() | ftxui::border | ftxui::flex, 
-                        cancelButton->Render() | ftxui::border | ftxui::flex
+                        confirmButton->Render() 
+                            | ftxui::color(ftxui::Color::GreenYellow) 
+                            | ftxui::hcenter 
+                            | ftxui::border 
+                            | ftxui::flex, 
+                        cancelButton->Render() 
+                            | ftxui::color(ftxui::Color::Red) 
+                            | ftxui::hcenter 
+                            | ftxui::border 
+                            | ftxui::flex
                     )
                 ) | ftxui::center;
             }
@@ -181,12 +177,12 @@ std::tuple<bool, int> instruct::setupMenu() {
     });
     setupScreen.Loop(setup);
     if (setupStop) {
-        return std::make_tuple(false, 0);
+        return std::make_tuple(false, EXIT_SUCCESS);
     }
     if (!setupSuccess) {
-        return std::make_tuple(false, 1);
+        return std::make_tuple(false, EXIT_FAILURE);
     }
-    return std::make_tuple(true, 0);
+    return std::make_tuple(true, EXIT_SUCCESS);
 }
 
 bool instruct::instructSetup(std::string instructPswd) {
@@ -302,5 +298,52 @@ See the log file for more details.)"};
         }
         return false;
     }
+    return true;
+}
+
+bool instruct::saveAllHandled() {
+    try {
+        instruct::Data::saveAll();
+    } catch (const std::exception &e) {
+        std::string msg {R"(Some of your data failed to save.
+Please manually resolve your data from `)" 
++ std::string {instruct::constants::DATA_DIR} + R"(`.
+See the log file for more details.)"};
+        LOG_F(ERROR, msg.c_str());
+        LOG_F(ERROR, e.what());
+        std::cerr << msg << '\n';
+        return false;
+    }
+    return true;
+}
+
+bool instruct::mainMenu() {
+    auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
+    
+    if (instruct::IData::instructorData->firstTime) {
+        instruct::notif::setNotification(R"(Welcome to instruct.
+
+Before you begin, you'll need to select a verison of OpenVsCode Server to install.
+Afterwards, you can import your list of students.
+
+This message will only show once.)");
+    }
+    
+    // std::string instructorCodeButtonLabel {"Instructor (Start)"};
+    // ftxui::Component instructorCodeButton {ftxui::Button(&instructorCodeButtonLabel, [&] {
+    //     instructorCodeButtonLabel = "Instructor (Stop)";
+    // }, ftxui::ButtonOption::Ascii())};
+    // std::string studentCodeButtonLabel {"Student (Start All)"};
+    // ftxui::Component studentCodeButton {ftxui::Button(&studentCodeButtonLabel, [&] {
+    //     studentCodeButtonLabel = "Student (Stop All)";
+    // }, ftxui::ButtonOption::Ascii())};
+    // ftxui::Component codeDropdown {ftxui::Collapsible("Code", 
+    //     ftxui::Container::Vertical({instructorCodeButton, studentCodeButton})
+    // )};
+    
+    // auto app {ftxui::Renderer()};
+    // appScreen.Loop(app);
+    // Also reset appScreen cursor manually.
+    
     return true;
 }

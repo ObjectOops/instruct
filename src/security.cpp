@@ -16,7 +16,7 @@ using namespace instruct;
 const std::string ALIVE_CODE {"Instruct Alive"};
 
 bool sec::instanceActive() {
-    std::string port = std::to_string(IData::data->authPort);
+    std::string port = std::to_string(IData::instructorData->authPort);
     std::string url {"http://localhost:" + port};
     DLOG_F(INFO, "Checking for active instance at: %s", url.c_str());
 
@@ -43,8 +43,8 @@ void sec::createInstance() {
             }
         );
         server.listen(
-            IData::data->authHost, 
-            IData::data->authPort
+            IData::instructorData->authHost, 
+            IData::instructorData->authPort
         );
     }};
     worker.detach();
@@ -52,8 +52,8 @@ void sec::createInstance() {
 
 bool sec::updateInstructPswd(const std::string &instructPswd) {
     try {
-        IData::data->pswdSHA256 = picosha2::hash256_hex_string(instructPswd);
-        IData::data->saveData();
+        IData::instructorData->pswdSHA256 = picosha2::hash256_hex_string(instructPswd);
+        IData::instructorData->saveData();
     } catch (const std::exception &e) {
         // Only relevant during initial set up.
         setup::setupError.errCode = std::make_error_code(std::errc::io_error);

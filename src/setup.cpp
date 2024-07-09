@@ -57,11 +57,12 @@ bool setup::populateDataDir() {
 
 bool setup::setDefaults() {
     try {
-        IData::data->authHost = "0.0.0.0";
-        IData::data->authPort = 8000;
-        IData::data->ovscsPort = 3000;
+        IData::instructorData->authHost = "0.0.0.0";
+        IData::instructorData->authPort = 8000;
+        IData::instructorData->codePort = 3000;
+        IData::instructorData->firstTime = true;
         DLOG_F(INFO, "Assigned default data.");
-        IData::data->saveData();
+        IData::instructorData->saveData();
         DLOG_F(INFO, "Saved default data.");
     } catch (const std::exception &e) {
         setupError.errCode = std::make_error_code(std::errc::io_error);

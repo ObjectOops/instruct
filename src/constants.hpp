@@ -8,7 +8,9 @@
 
 namespace instruct::constants {
     inline const std::filesystem::path DATA_DIR {"instruct_data"};
-    inline const std::filesystem::path LOG_DIR {"instruct.log"};
+    inline const std::filesystem::path LOG_DIR {"logs"};
+    
+    inline const std::filesystem::path INSTRUCT_LOG_DIR {LOG_DIR / "instruct.log"};
 
     inline const std::filesystem::path INSTRUCTOR_CONFIG {DATA_DIR / "instructor_config.yaml"};
 
