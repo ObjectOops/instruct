@@ -203,14 +203,14 @@ bool instruct::instructSetup(std::string instructPswd) {
             const instruct::setup::SetupError &setupError {instruct::setup::getSetupError()};
             std::string setupErrorStr {
                 "An error occurred: " 
-                + (setupError.errCode.value() != 0 ? 
-                    "Error Code: " 
+                + (setupError.errCode.value() != 0 
+                    ? "Error Code: " 
                     + std::to_string(setupError.errCode.value()) 
                     + " \"" + setupError.errCode.message() 
                     + "\" " + setupError.errCode.category().name()
                     : "No error code.")
-                + (!setupError.exMsg.empty() ? 
-                    " | Exception: " + setupError.exMsg
+                + (!setupError.exMsg.empty() 
+                    ? " | Exception: " + setupError.exMsg
                     : " | No exception.")
                 + " | Message: " + setupError.msg
             };
@@ -424,20 +424,40 @@ This message will only show once.)");
             ftxui::Collapsible(menuContents.label, ftxui::Container::Vertical(buttons))
         );
     }
-    
-    // ftxui::Component instructorCodeButton {ftxui::Button(&instructorCodeButtonLabel, [&] {
-    //     instructorCodeButtonLabel = dynamicLabels.icblStop;
-    // }, ftxui::ButtonOption::Ascii())};
-    // ftxui::Component studentCodeButton {ftxui::Button(&studentCodeButtonLabel, [&] {
-    //     studentCodeButtonLabel = dynamicLabels.scblStop;
-    // }, ftxui::ButtonOption::Ascii())};
-    // ftxui::Component codeDropdown {ftxui::Collapsible("Code", 
-    //     ftxui::Container::Vertical({instructorCodeButton, studentCodeButton})
-    // )};
+    struct {
+        int problemCount {};
+        ftxui::Component renderer {ftxui::Renderer([&] {
+            return ftxui::hbox({
+                (problemCount == 0
+                    ? ftxui::text("Systems Operational") | ftxui::borderLight 
+                    : ftxui::text("Problems Encountered: " + std::to_string(problemCount)) 
+                        | ftxui::color(ftxui::Color::Red) | ftxui::borderLight), 
+                ftxui::text(instruct::constants::INSTRUCT_VERSION) | ftxui::borderLight
+            });
+        })};
+    } titleBarStatus;
+    ftxui::Component notificationsButton {ftxui::Button("◆", [] {
+    }, ftxui::ButtonOption::Animated(ftxui::Color::Black, ftxui::Color::GreenYellow))};
+    ftxui::Component settingsButton {ftxui::Button("Settings", [] {
+    }, ftxui::ButtonOption::Ascii())};
+    ftxui::Component exitButton {ftxui::Button(
+        "Exit", appScreen.ExitLoopClosure(), ftxui::ButtonOption::Ascii()
+    )};
+    for (ftxui::Component &titleBarMenu : titleBarMenus) {
+        titleBarMenu |= ftxui::border;
+    }
+    ftxui::Component titleBar {ftxui::Container::Horizontal({
+        ftxui::Container::Horizontal(titleBarMenus), 
+        titleBarStatus.renderer, 
+        notificationsButton, 
+        settingsButton | ftxui::border, 
+        exitButton | ftxui::border
+    })};
     
     // auto app {ftxui::Renderer()};
-    // appScreen.Loop(app);
+    appScreen.Loop(titleBar);
     // Also reset appScreen cursor manually.
+    // Escape also brings up exit menu.
     
     return true;
 }

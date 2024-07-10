@@ -10,10 +10,10 @@ using namespace instruct;
 
 namespace keys {
     const std::string AUTH_HOST {"auth_host"};
-    const std::string AUTH_PORT {keys::AUTH_PORT};
-    const std::string CODE_PORT {keys::CODE_PORT};
-    const std::string PASSWORD_SHA256 {keys::PASSWORD_SHA256};
-    const std::string FIRST_TIME {keys::FIRST_TIME};
+    const std::string AUTH_PORT {"auth_port"};
+    const std::string CODE_PORT {"code_port"};
+    const std::string PASSWORD_SHA256 {"password_sha256"};
+    const std::string FIRST_TIME {"first_time"};
 }
 
 Data::Data(const std::filesystem::path &filePath) : 
