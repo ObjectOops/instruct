@@ -7,6 +7,18 @@
 
 #include "yaml-cpp/yaml.h"
 
+#define DATA_ATTR(TYPE, NAME) \
+private: \
+TYPE NAME; \
+public: \
+inline const TYPE &get_##NAME() { \
+    return NAME; \
+} \
+inline void set_##NAME(const TYPE &val) { \
+    NAME = val; \
+    saveData(); \
+}
+
 namespace instruct {
     class Data {
         protected:
@@ -32,15 +44,17 @@ namespace instruct {
         IData(const std::filesystem::path &);
         void saveData() override;
         
-        std::string authHost;
-        int authPort;
-        int codePort;
-        std::string pswdSHA256;
-        std::string pswdSalt;
-        bool firstTime;
+        DATA_ATTR(std::string, authHost)
+        DATA_ATTR(int, authPort)
+        DATA_ATTR(int, codePort)
+        DATA_ATTR(std::string, pswdSHA256)
+        DATA_ATTR(std::string, pswdSalt)
+        DATA_ATTR(bool, firstTime)
         
         inline static std::unique_ptr<IData> instructorData;
     };
 }
+
+#undef DATA_ATTR
 
 #endif

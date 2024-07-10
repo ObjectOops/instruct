@@ -315,7 +315,7 @@ See the log file for more details.)"};
 bool instruct::mainMenu() {
     auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
     
-    if (instruct::IData::instructorData->firstTime) {
+    if (instruct::IData::instructorData->get_firstTime()) {
         instruct::notif::setNotification(R"(Welcome to instruct.
 
 Before you begin, you'll need to select a verison of OpenVsCode Server to install.
