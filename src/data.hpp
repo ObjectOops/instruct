@@ -36,6 +36,7 @@ namespace instruct {
         int authPort;
         int codePort;
         std::string pswdSHA256;
+        std::string pswdSalt;
         bool firstTime;
         
         inline static std::unique_ptr<IData> instructorData;

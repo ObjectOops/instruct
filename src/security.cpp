@@ -1,4 +1,5 @@
 #include <thread>
+#include <random>
 
 #include "picosha2.h"
 #include "loguru.hpp"
@@ -52,7 +53,14 @@ void sec::createInstance() {
 
 bool sec::updateInstructPswd(const std::string &instructPswd) {
     try {
-        IData::instructorData->pswdSHA256 = picosha2::hash256_hex_string(instructPswd);
+        // These are for salting.
+        // Maybe a more cryto-secure RNG would be better.
+        std::random_device seed {};
+        std::mt19937 rng {seed()};
+        std::string salt {std::to_string(rng())};
+        
+        IData::instructorData->pswdSHA256 = picosha2::hash256_hex_string(instructPswd + salt);
+        IData::instructorData->pswdSalt = salt;
         IData::instructorData->saveData();
     } catch (const std::exception &e) {
         // Only relevant during initial set up.

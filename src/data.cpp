@@ -13,6 +13,7 @@ namespace keys {
     const std::string AUTH_PORT {"auth_port"};
     const std::string CODE_PORT {"code_port"};
     const std::string PASSWORD_SHA256 {"password_sha256"};
+    const std::string PASSWORD_SALT {"password_salt"};
     const std::string FIRST_TIME {"first_time"};
 }
 
@@ -50,6 +51,7 @@ IData::IData(const std::filesystem::path &filePath) : Data {filePath} {
     authPort = yaml[keys::AUTH_PORT].as<int>();
     codePort = yaml[keys::CODE_PORT].as<int>();
     pswdSHA256 = yaml[keys::PASSWORD_SHA256].as<std::string>();
+    pswdSalt = yaml[keys::PASSWORD_SALT].as<std::string>();
     firstTime = yaml[keys::FIRST_TIME].as<bool>();
 }
 
@@ -58,6 +60,7 @@ void IData::saveData() {
     yaml[keys::AUTH_PORT] = authPort;
     yaml[keys::CODE_PORT] = codePort;
     yaml[keys::PASSWORD_SHA256] = pswdSHA256;
+    yaml[keys::PASSWORD_SALT] = pswdSalt;
     yaml[keys::FIRST_TIME] = firstTime;
     
     Data::saveData();
