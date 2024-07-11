@@ -415,7 +415,10 @@ This message will only show once.)");
             }
         }
     };
+    int titleBarMenuCount {static_cast<int>(titleBarMenuContents.size())};
     ftxui::Components titleBarMenus {};
+    bool titleBarMenusShown [titleBarMenuCount] {};
+    int titleBarMenuIdx {};
     for (auto &menuContents : titleBarMenuContents) {
         ftxui::Components buttons {};
         for (auto &buttonContents : menuContents.options) {
@@ -424,8 +427,13 @@ This message will only show once.)");
             ));
         }
         titleBarMenus.push_back(
-            ftxui::Collapsible(menuContents.label, ftxui::Container::Vertical(buttons))
+            ftxui::Collapsible(
+                menuContents.label, 
+                ftxui::Container::Vertical(buttons), 
+                &titleBarMenusShown[titleBarMenuIdx]
+            )
         );
+        ++titleBarMenuIdx;
     }
     struct {
         int problemCount {};
@@ -446,6 +454,7 @@ This message will only show once.)");
     ftxui::Component exitButton {ftxui::Button(
         "Exit", appScreen.ExitLoopClosure(), ftxui::ButtonOption::Ascii()
     )};
+    int lastTitleBarMenuIdx {-1};
     ftxui::Component titleBar {ftxui::Renderer(
         ftxui::Container::Horizontal({
             ftxui::Container::Horizontal(titleBarMenus), 
@@ -455,6 +464,26 @@ This message will only show once.)");
             exitButton
         }), 
         [&] {
+            int newLastTitleBarMenuIdx {-1}, collapseTitleBarIndex {-1};
+            for (
+                int titleBarMenuShownIdx {}; 
+                titleBarMenuShownIdx < titleBarMenuCount; 
+                ++titleBarMenuShownIdx
+            ) {
+                if (titleBarMenusShown[titleBarMenuShownIdx] 
+                    && titleBarMenuShownIdx == lastTitleBarMenuIdx) {
+                    collapseTitleBarIndex = titleBarMenuShownIdx;
+                } else if (titleBarMenusShown[titleBarMenuShownIdx]) {
+                    newLastTitleBarMenuIdx = titleBarMenuShownIdx;
+                }
+            }
+            if (newLastTitleBarMenuIdx != -1) {
+                lastTitleBarMenuIdx = newLastTitleBarMenuIdx;
+                if (collapseTitleBarIndex != -1) {
+                    titleBarMenusShown[collapseTitleBarIndex] = false;
+                }
+            }
+            
             /*
             Collapsible Menu Rendering Nuances:
             1. FTXUI is not intended to render elements like this.
@@ -463,15 +492,20 @@ This message will only show once.)");
             */
             ftxui::Elements e_titleBarMenus {};
             int totalTitleBarMenuBuffer {};
-            for (TitleBarMenuContents &i : titleBarMenuContents) {
+            for (TitleBarMenuContents &titleBarMenuContent : titleBarMenuContents) {
                 // +4 for unicode symbol and border.
-                totalTitleBarMenuBuffer += i.label.length() + 4;
+                totalTitleBarMenuBuffer += titleBarMenuContent.label.length() + 4;
             }
             int titleBarMenuBuffer {totalTitleBarMenuBuffer};
-            for (int i {static_cast<int>(titleBarMenus.size() - 1)}; i >= 0; --i) {
+            for (
+                int rTitleBarMenuIdx {titleBarMenuCount - 1}; 
+                rTitleBarMenuIdx >= 0; 
+                --rTitleBarMenuIdx
+            ) {
                 // +4 for unicode symbol and border.
-                titleBarMenuBuffer -= titleBarMenuContents.at(i).label.length() + 4;
-                ftxui::Component &titleBarMenu {titleBarMenus.at(i)};
+                titleBarMenuBuffer -= titleBarMenuContents
+                    .at(rTitleBarMenuIdx).label.length() + 4;
+                ftxui::Component &titleBarMenu {titleBarMenus.at(rTitleBarMenuIdx)};
                 ftxui::Element e_titleBarMenu {titleBarMenu->Render() | ftxui::border};
                 ftxui::Element e_titleBarMenuBuffer {
                     ftxui::emptyElement() 
