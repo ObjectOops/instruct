@@ -194,7 +194,10 @@ bool instruct::instructSetup(std::string instructPswd) {
         );
         ftxui::Render(
             nestedSetupScreen, 
-            ftxui::window(ftxui::text("Setting up..."), ftxui::vbox(progress))
+            ftxui::window(
+                ftxui::text("Setting up..."), 
+                ftxui::vbox(progress) | ftxui::focusPositionRelative(0, 1) | ftxui::frame
+            )
         );
         nestedSetupScreen.Print();
     }};
@@ -443,18 +446,56 @@ This message will only show once.)");
     ftxui::Component exitButton {ftxui::Button(
         "Exit", appScreen.ExitLoopClosure(), ftxui::ButtonOption::Ascii()
     )};
-    for (ftxui::Component &titleBarMenu : titleBarMenus) {
-        titleBarMenu |= ftxui::border;
-    }
-    ftxui::Component titleBar {ftxui::Container::Horizontal({
-        ftxui::Container::Horizontal(titleBarMenus), 
-        titleBarStatus.renderer, 
-        notificationsButton, 
-        settingsButton | ftxui::border, 
-        exitButton | ftxui::border
-    })};
-    
-    // auto app {ftxui::Renderer()};
+    ftxui::Component titleBar {ftxui::Renderer(
+        ftxui::Container::Horizontal({
+            ftxui::Container::Horizontal(titleBarMenus), 
+            titleBarStatus.renderer, 
+            notificationsButton, 
+            settingsButton, 
+            exitButton
+        }), 
+        [&] {
+            /*
+            Collapsible Menu Rendering Nuances:
+            1. FTXUI is not intended to render elements like this.
+            2. We must render the menus in reverse order so they properly overlap.
+            3. We must manually calculate the width of each menu when in its collapsed state.
+            */
+            ftxui::Elements e_titleBarMenus {};
+            int totalTitleBarMenuBuffer {};
+            for (TitleBarMenuContents &i : titleBarMenuContents) {
+                // +4 for unicode symbol and border.
+                totalTitleBarMenuBuffer += i.label.length() + 4;
+            }
+            int titleBarMenuBuffer {totalTitleBarMenuBuffer};
+            for (int i {static_cast<int>(titleBarMenus.size() - 1)}; i >= 0; --i) {
+                // +4 for unicode symbol and border.
+                titleBarMenuBuffer -= titleBarMenuContents.at(i).label.length() + 4;
+                ftxui::Component &titleBarMenu {titleBarMenus.at(i)};
+                ftxui::Element e_titleBarMenu {titleBarMenu->Render() | ftxui::border};
+                ftxui::Element e_titleBarMenuBuffer {
+                    ftxui::emptyElement() 
+                    | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, titleBarMenuBuffer)
+                };
+                e_titleBarMenus.push_back(ftxui::hbox({e_titleBarMenuBuffer, e_titleBarMenu}));
+            }
+            return ftxui::hbox({
+                ftxui::dbox({
+                    ftxui::hbox({
+                        ftxui::emptyElement() 
+                            | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, totalTitleBarMenuBuffer), 
+                        titleBarStatus.renderer->Render()
+                    }), 
+                    ftxui::dbox(e_titleBarMenus)
+                }), 
+                ftxui::filler(), 
+                notificationsButton->Render(), 
+                settingsButton->Render() | ftxui::border, 
+                exitButton->Render() | ftxui::border
+            });
+        }
+    )};
+
     appScreen.Loop(titleBar);
     // Also reset appScreen cursor manually.
     // Escape also brings up exit menu.
