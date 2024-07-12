@@ -10,11 +10,9 @@
 #include "setup.hpp"
 #include "data.hpp"
 
-#include "httplib.h"
+namespace instruct {
 
-using namespace instruct;
-
-const std::string ALIVE_CODE {"Instruct Alive"};
+static const std::string ALIVE_CODE {"Instruct Alive"};
 
 bool sec::instanceActive() {
     std::string port = std::to_string(IData::instructorData->get_authPort());
@@ -73,4 +71,6 @@ bool sec::updateInstructPswd(const std::string &instructPswd) {
         return false;
     }
     return true;
+}
+
 }

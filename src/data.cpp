@@ -6,15 +6,15 @@
 #include "constants.hpp"
 #include "data.hpp"
 
-using namespace instruct;
+namespace instruct {
 
 namespace keys {
-    const std::string AUTH_HOST {"auth_host"};
-    const std::string AUTH_PORT {"auth_port"};
-    const std::string CODE_PORT {"code_port"};
-    const std::string PASSWORD_SHA256 {"password_sha256"};
-    const std::string PASSWORD_SALT {"password_salt"};
-    const std::string FIRST_TIME {"first_time"};
+    static const std::string AUTH_HOST {"auth_host"};
+    static const std::string AUTH_PORT {"auth_port"};
+    static const std::string CODE_PORT {"code_port"};
+    static const std::string PASSWORD_SHA256 {"password_sha256"};
+    static const std::string PASSWORD_SALT {"password_salt"};
+    static const std::string FIRST_TIME {"first_time"};
 }
 
 Data::Data(const std::filesystem::path &filePath) : 
@@ -64,4 +64,6 @@ void IData::saveData() {
     yaml[keys::FIRST_TIME] = firstTime;
     
     Data::saveData();
+}
+
 }

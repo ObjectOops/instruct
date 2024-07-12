@@ -17,7 +17,7 @@
 #include "data.hpp"
 #include "ui.hpp"
 
-using namespace instruct;
+namespace instruct {
 
 bool ui::initAllHandled() {
     try {
@@ -519,4 +519,6 @@ This message will only show once.)");
     // Escape also brings up exit menu.
     
     return true;
+}
+
 }

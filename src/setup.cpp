@@ -9,7 +9,7 @@
 #include "setup.hpp"
 #include "data.hpp"
 
-using namespace instruct;
+namespace instruct {
 
 const setup::SetupError &setup::getSetupError() {
     return setupError;
@@ -75,4 +75,6 @@ bool setup::setDefaults() {
 void setup::deleteDataDir() {
     DLOG_F(INFO, "Deleted data dir.");
     std::filesystem::remove_all(constants::DATA_DIR);
+}
+
 }

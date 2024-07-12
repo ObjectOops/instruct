@@ -5,7 +5,7 @@
 #include "constants.hpp"
 #include "logging.hpp"
 
-using namespace instruct;
+namespace instruct {
 
 void log::configureLogging(int argc, char **argv) {
     using namespace std::string_literals;
@@ -25,4 +25,6 @@ void log::configureLogging(int argc, char **argv) {
 
 void log::logVersion() {
     LOG_F(INFO, "Instruct Version: %s", instruct::constants::INSTRUCT_VERSION.c_str());
+}
+
 }
