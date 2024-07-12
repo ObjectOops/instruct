@@ -130,15 +130,15 @@ std::tuple<bool, int> ui::setupMenu() {
                     ftxui::window(ftxui::text("Password"), instructPswdPrompt->Render()), 
                     ftxui::hbox(
                         confirmButton->Render() 
-                            | ftxui::color(ftxui::Color::GreenYellow) 
                             | ftxui::hcenter 
                             | ftxui::border 
-                            | ftxui::flex, 
+                            | ftxui::flex 
+                            | ftxui::color(ftxui::Color::GreenYellow), 
                         cancelButton->Render() 
-                            | ftxui::color(ftxui::Color::Red) 
                             | ftxui::hcenter 
                             | ftxui::border 
                             | ftxui::flex
+                            | ftxui::color(ftxui::Color::Red) 
                     )
                 ) | ftxui::center;
             }
@@ -374,7 +374,7 @@ This message will only show once.)");
                 (problemCount == 0
                     ? ftxui::text("Systems Operational") | ftxui::borderLight 
                     : ftxui::text("Problems Encountered: " + std::to_string(problemCount)) 
-                        | ftxui::color(ftxui::Color::Red) | ftxui::borderLight), 
+                        | ftxui::borderLight | ftxui::color(ftxui::Color::Red)), 
                 ftxui::text(instruct::constants::INSTRUCT_VERSION) | ftxui::borderLight
             });
         })};
@@ -499,7 +499,7 @@ This message will only show once.)");
                     ftxui::hbox(
                         notificationsButton->Render(), 
                         settingsButton->Render() | ftxui::border, 
-                        exitButton->Render() | ftxui::border
+                        exitButton->Render() | ftxui::border | ftxui::color(ftxui::Color::Red)
                     ), 
                     ftxui::filler()
                 )
