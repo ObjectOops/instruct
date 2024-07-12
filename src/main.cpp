@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <exception>
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -415,7 +416,7 @@ This message will only show once.)");
             }
         }
     };
-    int titleBarMenuCount {static_cast<int>(titleBarMenuContents.size())};
+    const int titleBarMenuCount {static_cast<int>(titleBarMenuContents.size())};
     ftxui::Components titleBarMenus {};
     bool titleBarMenusShown [titleBarMenuCount] {};
     int titleBarMenuIdx {};
@@ -511,26 +512,78 @@ This message will only show once.)");
                     ftxui::emptyElement() 
                     | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, titleBarMenuBuffer)
                 };
-                e_titleBarMenus.push_back(ftxui::hbox({e_titleBarMenuBuffer, e_titleBarMenu}));
+                TitleBarMenuContents &currTitleBarMenuContents {
+                    titleBarMenuContents.at(rTitleBarMenuIdx)
+                };
+                int currTitleBarMenuContentsWidthHeight [2] {
+                    // +3 for left border and button edges.
+                    static_cast<int>(std::max(
+                        currTitleBarMenuContents.label.length(), 
+                        std::max_element(
+                            currTitleBarMenuContents.options.begin(), 
+                            currTitleBarMenuContents.options.end(), 
+                            [] (
+                                const TitleBarButtonContents &lhs, 
+                                const TitleBarButtonContents &rhs
+                            ) {
+                                return lhs.label->length() < rhs.label->length();
+                            }
+                        )->label->length()
+                    )) + 3, 
+                    // +3 for menu label and border.
+                    static_cast<int>(currTitleBarMenuContents.options.size() + 3)
+                };
+                ftxui::Elements titleBarMenuBackground {};
+                for (int bgRow {}; bgRow < currTitleBarMenuContentsWidthHeight[1]; ++bgRow) {
+                    titleBarMenuBackground.push_back(ftxui::text(
+                        std::string (currTitleBarMenuContentsWidthHeight[0], ' ')
+                    ));
+                }
+                e_titleBarMenus.push_back(
+                    ftxui::vbox(
+                        ftxui::hbox({
+                            e_titleBarMenuBuffer, 
+                            titleBarMenusShown[rTitleBarMenuIdx] 
+                            ? ftxui::dbox(
+                                ftxui::vbox(titleBarMenuBackground), 
+                                e_titleBarMenu
+                            )
+                            : e_titleBarMenu
+                        }), 
+                        ftxui::filler()
+                    )
+                );
             }
             return ftxui::hbox({
                 ftxui::dbox({
                     ftxui::hbox({
                         ftxui::emptyElement() 
                             | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, totalTitleBarMenuBuffer), 
-                        titleBarStatus.renderer->Render()
+                        ftxui::vbox(titleBarStatus.renderer->Render(), ftxui::filler())
                     }), 
                     ftxui::dbox(e_titleBarMenus)
                 }), 
                 ftxui::filler(), 
-                notificationsButton->Render(), 
-                settingsButton->Render() | ftxui::border, 
-                exitButton->Render() | ftxui::border
+                ftxui::vbox(
+                    ftxui::hbox(
+                        notificationsButton->Render(), 
+                        settingsButton->Render() | ftxui::border, 
+                        exitButton->Render() | ftxui::border
+                    ), 
+                    ftxui::filler()
+                )
             });
         }
     )};
+    
+    ftxui::Component app {ftxui::Renderer(titleBar, [&] {
+        return ftxui::vbox(
+            titleBar->Render(), 
+            ftxui::filler()
+        );
+    })};
 
-    appScreen.Loop(titleBar);
+    appScreen.Loop(app);
     // Also reset appScreen cursor manually.
     // Escape also brings up exit menu.
     
