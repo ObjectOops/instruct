@@ -85,10 +85,12 @@ endif()
 # -----------------------------
 
 add_executable(instruct
+    src/security.cpp
+    src/logging.cpp
+    src/setup.cpp
     src/main.cpp
     src/data.cpp
-    src/setup.cpp
-    src/security.cpp
+    src/ui.cpp
 )
 
 # For some reason cpp-httplib needs be added manually and has other strange config issues.
