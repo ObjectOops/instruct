@@ -11,7 +11,9 @@
 
 namespace instruct {
 
-const setup::SetupError &setup::getSetupError() {
+static setup::SetupError setupError {};
+
+setup::SetupError &setup::getSetupError() {
     return setupError;
 }
 

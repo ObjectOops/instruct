@@ -61,9 +61,10 @@ bool sec::updateInstructPswd(const std::string &instructPswd) {
         IData::instructorData->set_pswdSalt(salt);
     } catch (const std::exception &e) {
         // Only relevant during initial set up.
-        setup::setupError.errCode = std::make_error_code(std::errc::io_error);
-        setup::setupError.exMsg = e.what();
-        setup::setupError.msg = "Failed to save instructor password.";
+        setup::SetupError &setupError {setup::getSetupError()};
+        setupError.errCode = std::make_error_code(std::errc::io_error);
+        setupError.exMsg = e.what();
+        setupError.msg = "Failed to save instructor password.";
         
         notif::setNotification(
             "Failed to save password. Your new password will only be used during this session."

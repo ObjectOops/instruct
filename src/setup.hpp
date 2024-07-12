@@ -10,11 +10,7 @@ namespace instruct::setup {
         std::string msg, exMsg;
     };
 
-    namespace {
-        inline SetupError setupError {};
-    }
-
-    const SetupError &getSetupError();
+    SetupError &getSetupError();
 
     bool setupIncomplete();
 
