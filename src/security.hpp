@@ -5,7 +5,7 @@
 
 namespace instruct::sec {
     bool instanceActive();
-    void createInstance();
+    bool createInstance();
     
     bool updateInstructPswd(const std::string &);
 }

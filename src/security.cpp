@@ -1,3 +1,4 @@
+#include <exception>
 #include <thread>
 #include <random>
 
@@ -31,22 +32,28 @@ bool sec::instanceActive() {
     
     return isGood;
 }
-void sec::createInstance() {
-    std::thread worker {[&] {
-        httplib::Server server {};
-        server.Get(
-            "/heartbeat", 
-            [&] (const httplib::Request &, httplib::Response &res) {
-                DLOG_F(INFO, "Heartbeat connection received.");
-                res.set_content(ALIVE_CODE, "text/plain");
-            }
-        );
-        server.listen(
-            IData::instructorData->get_authHost(), 
-            IData::instructorData->get_authPort()
-        );
-    }};
-    worker.detach();
+bool sec::createInstance() {
+    try {
+        std::thread worker {[&] {
+            httplib::Server server {};
+            server.Get(
+                "/heartbeat", 
+                [&] (const httplib::Request &, httplib::Response &res) {
+                    DLOG_F(INFO, "Heartbeat connection received.");
+                    res.set_content(ALIVE_CODE, "text/plain");
+                }
+            );
+            server.listen(
+                IData::instructorData->get_authHost(), 
+                IData::instructorData->get_authPort()
+            );
+        }};
+        worker.detach();
+    } catch (const std::exception &e) {
+        LOG_F(ERROR, "Failed to create instance. Exception: %s", e.what());
+        return false;
+    }
+    return true;
 }
 
 bool sec::updateInstructPswd(const std::string &instructPswd) {

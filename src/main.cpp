@@ -27,16 +27,23 @@ int main(int argc, char **argv) {
         LOG_F(INFO, "Exiting.");
         return EXIT_FAILURE;
     }
+    
     if (instruct::sec::instanceActive()) {
         LOG_F(INFO, "Already running. Exiting.");
         instruct::ui::print("Detected an instance of instruct already running.\n");
         return EXIT_FAILURE;
     }
-    instruct::sec::createInstance();
+    if (!instruct::sec::createInstance()) {
+        LOG_F(INFO, "Exiting.");
+        return EXIT_FAILURE;
+    }
     LOG_F(1, "Instance locked.");
     
     LOG_F(INFO, "Starting main application");
-    instruct::ui::mainMenu();
+    if (!instruct::ui::mainMenu()) {
+        LOG_F(INFO, "Exiting.");
+        return EXIT_FAILURE;
+    }
     
     LOG_F(INFO, "Finalizing save data.");
     if (!instruct::ui::saveAllHandled()) {
