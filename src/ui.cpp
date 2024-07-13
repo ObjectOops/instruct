@@ -299,6 +299,8 @@ This message will only show once.)");
     std::string runAllTestsButtonLabel {dynamicLabels.ratbl};
     // ---------------------------------------------------------
     
+    // Data structure containing the titles of each title bar menu, 
+    // along with the label of each button and their functions.
     std::vector<TitleBarMenuContents> titleBarMenuContents {
         {
             "Code", {
@@ -365,10 +367,15 @@ This message will only show once.)");
             }
         }
     };
+
+    // Create title bar menus.
     const int titleBarMenuCount {static_cast<int>(titleBarMenuContents.size())};
     ftxui::Components titleBarMenus {};
     bool titleBarMenusShown [titleBarMenuCount] {};
     createTitleBarMenus(titleBarMenuContents, titleBarMenus, titleBarMenusShown);
+
+    // The status bar next to the title bar menus that contains 
+    // the application status and version.
     struct {
         int problemCount {};
         ftxui::Component renderer {ftxui::Renderer([&] {
@@ -381,6 +388,8 @@ This message will only show once.)");
             });
         })};
     } titleBarStatus;
+    
+    // Buttons on the right-most side of the title bar.
     ftxui::Component notificationsButton {ftxui::Button("◆", [] {
     }, ftxui::ButtonOption::Animated(ftxui::Color::Black, ftxui::Color::GreenYellow))};
     ftxui::Component settingsButton {ftxui::Button("Settings", [] {
@@ -388,7 +397,11 @@ This message will only show once.)");
     ftxui::Component exitButton {ftxui::Button(
         "Exit", appScreen.ExitLoopClosure(), ftxui::ButtonOption::Ascii()
     )};
+    
+    // The index of the last opened title bar menu.
+    // -1 if there was no last opened menu.
     int lastTitleBarMenuIdx {-1};
+
     ftxui::Component titleBar {ftxui::Renderer(
         ftxui::Container::Horizontal({
             ftxui::Container::Horizontal(titleBarMenus), 
@@ -409,11 +422,14 @@ This message will only show once.)");
             3. We must manually calculate the width of each menu when in its collapsed state.
             */
             ftxui::Elements e_titleBarMenus {};
+            
+            // The complete cell width that all title bar menus collectively occupy.
             int totalTitleBarMenuBuffer {};
             for (TitleBarMenuContents &titleBarMenuContent : titleBarMenuContents) {
                 // +4 for unicode symbol and border.
                 totalTitleBarMenuBuffer += titleBarMenuContent.label.length() + 4;
             }
+            
             renderTitleBarMenus(
                 totalTitleBarMenuBuffer, 
                 titleBarMenuCount, 
@@ -422,6 +438,7 @@ This message will only show once.)");
                 e_titleBarMenus, 
                 titleBarMenusShown
             );
+            
             return ftxui::hbox({
                 ftxui::dbox({
                     ftxui::hbox({
@@ -479,8 +496,10 @@ static void createTitleBarMenus(
         ++titleBarMenuIdx;
     }
 }
-static void collapseInactiveTitleBarMenus(const int titleBarMenuCount, bool *titleBarMenusShown, int &lastTitleBarMenuIdx) {
-    int newLastTitleBarMenuIdx {-1}, collapseTitleBarIndex {-1};
+static void collapseInactiveTitleBarMenus(
+    const int titleBarMenuCount, bool *titleBarMenusShown, int &lastTitleBarMenuIdx
+) {
+    int newLastTitleBarMenuIdx {-1}, collapseTitleBarIdx {-1};
     for (
         int titleBarMenuShownIdx {}; 
         titleBarMenuShownIdx < titleBarMenuCount; 
@@ -488,15 +507,20 @@ static void collapseInactiveTitleBarMenus(const int titleBarMenuCount, bool *tit
     ) {
         if (titleBarMenusShown[titleBarMenuShownIdx] 
             && titleBarMenuShownIdx == lastTitleBarMenuIdx) {
-            collapseTitleBarIndex = titleBarMenuShownIdx;
+            // This title bar menu will be collapsed 
+            // since it is currently being shown and was 
+            // the last one shown.
+            collapseTitleBarIdx = titleBarMenuShownIdx;
         } else if (titleBarMenusShown[titleBarMenuShownIdx]) {
+            // This title bar menu will be shown next 
+            // since it wasn't the last one shown.
             newLastTitleBarMenuIdx = titleBarMenuShownIdx;
         }
     }
     if (newLastTitleBarMenuIdx != -1) {
         lastTitleBarMenuIdx = newLastTitleBarMenuIdx;
-        if (collapseTitleBarIndex != -1) {
-            titleBarMenusShown[collapseTitleBarIndex] = false;
+        if (collapseTitleBarIdx != -1) {
+            titleBarMenusShown[collapseTitleBarIdx] = false;
         }
     }
 }
@@ -508,6 +532,8 @@ static void renderTitleBarMenus(
     ftxui::Elements &e_titleBarMenus, 
     bool *titleBarMenusShown
 ) {
+    // Render the title bar menus in reverse order 
+    // per stated nuances.
     int titleBarMenuBuffer {totalTitleBarMenuBuffer};
     for (
         int rTitleBarMenuIdx {titleBarMenuCount - 1}; 
@@ -517,6 +543,7 @@ static void renderTitleBarMenus(
         // +4 for unicode symbol and border.
         titleBarMenuBuffer -= titleBarMenuContents
             .at(rTitleBarMenuIdx).label.length() + 4;
+        
         ftxui::Component &titleBarMenu {titleBarMenus.at(rTitleBarMenuIdx)};
         ftxui::Element e_titleBarMenu {titleBarMenu->Render() | ftxui::border};
         ftxui::Element e_titleBarMenuBuffer {
@@ -526,6 +553,10 @@ static void renderTitleBarMenus(
         TitleBarMenuContents &currTitleBarMenuContents {
             titleBarMenuContents.at(rTitleBarMenuIdx)
         };
+        
+        // Compute the width and height of a title bar menu 
+        // so we can create a background of spaces to 
+        // cover overlapping characters from other menus.
         int currTitleBarMenuContentsWidthHeight [2] {
             // +3 for left border and button edges.
             static_cast<int>(std::max(
@@ -544,12 +575,16 @@ static void renderTitleBarMenus(
             // +3 for menu label and border.
             static_cast<int>(currTitleBarMenuContents.options.size() + 3)
         };
+        
+        // Create the background of spaces.
         ftxui::Elements titleBarMenuBackground {};
         for (int bgRow {}; bgRow < currTitleBarMenuContentsWidthHeight[1]; ++bgRow) {
             titleBarMenuBackground.push_back(ftxui::text(
                 std::string (currTitleBarMenuContentsWidthHeight[0], ' ')
             ));
         }
+
+        // Render.        
         e_titleBarMenus.push_back(
             ftxui::vbox(
                 ftxui::hbox({
