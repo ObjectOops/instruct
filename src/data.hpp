@@ -4,8 +4,10 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "yaml-cpp/yaml.h"
+#include "uuid.h"
 
 #define DATA_ATTR(TYPE, NAME) \
 private: \
@@ -18,6 +20,7 @@ inline void set_##NAME(const TYPE &val) { \
     NAME = val; \
     saveData(); \
 }
+#define SINGLE(...) __VA_ARGS__
 
 namespace instruct {
     class Data {
@@ -53,8 +56,32 @@ namespace instruct {
         
         inline static std::unique_ptr<IData> instructorData;
     };
+    class SData : public Data {
+        public:
+        SData() = default;
+        SData(const std::filesystem::path &);
+        void saveData() override;
+        
+        DATA_ATTR(std::string, authHost)
+        DATA_ATTR(int, authPort)
+        DATA_ATTR(std::vector<int>, codePorts)
+        DATA_ATTR(SINGLE(std::pair<int, int>), codePortRange)
+        DATA_ATTR(bool, useRandomPorts)
+        
+        struct Student {
+            uuids::uuid uuid;
+            std::string displayName;
+            std::string pswdSHA256;
+            std::string pswdSalt;
+            bool elevatedPriveleges;
+        };
+        DATA_ATTR(std::vector<Student>, students)
+        
+        inline static std::unique_ptr<SData> studentsData;
+    };
 }
 
 #undef DATA_ATTR
+#undef SINGLE
 
 #endif

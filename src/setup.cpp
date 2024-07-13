@@ -38,7 +38,8 @@ bool setup::createDataDir() {
 
 bool setup::populateDataDir() {
     std::filesystem::path paths [] {
-        constants::INSTRUCTOR_CONFIG
+        constants::INSTRUCTOR_CONFIG, 
+        constants::STUDENTS_CONFIG
     };
     for (std::filesystem::path &path : paths) {
         try {
@@ -59,11 +60,20 @@ bool setup::populateDataDir() {
 
 bool setup::setDefaults() {
     try {
-        DLOG_F(INFO, "Assigning default data.");
+        DLOG_F(INFO, "Assigning default instructor data.");
         IData::instructorData->set_authHost("0.0.0.0");
         IData::instructorData->set_authPort(8000);
         IData::instructorData->set_codePort(3000);
         IData::instructorData->set_firstTime(true);
+        DLOG_F(INFO, "Saved default data.");
+
+        DLOG_F(INFO, "Assigning default students data.");
+        SData::studentsData->set_authHost("0.0.0.0");
+        SData::studentsData->set_authPort(8001);
+        SData::studentsData->set_codePorts({});
+        SData::studentsData->set_codePortRange({3001, 4000});
+        SData::studentsData->set_useRandomPorts(true);
+        SData::studentsData->set_students({{uuids::uuid::from_string("9d5b69cc-1aca-46bd-940a-de1f110357a9").value(), "John Doe", "qwertyuiop", "asdf", false}});
         DLOG_F(INFO, "Saved default data.");
     } catch (const std::exception &e) {
         setupError.errCode = std::make_error_code(std::errc::io_error);

@@ -461,10 +461,12 @@ This message will only show once.)");
         }
     )};
     
+    ftxui::Components studentBoxes {};
+    
+    
     ftxui::Component app {ftxui::Renderer(titleBar, [&] {
         return ftxui::vbox(
-            titleBar->Render(), 
-            ftxui::filler()
+            titleBar->Render()
         );
     })};
 

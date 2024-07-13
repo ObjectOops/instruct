@@ -82,6 +82,18 @@ if(NOT cpp-httplib_POPULATED)
     FetchContent_Populate(cpp-httplib)
     # add_subdirectory(${cpp-httplib_SOURCE_DIR} ${cpp-httplib_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
+# STDUUID ---------------------
+FetchContent_Declare(stduuid
+    GIT_REPOSITORY https://github.com/mariusbancila/stduuid.git
+    GIT_TAG v1.2.3
+)
+
+FetchContent_GetProperties(stduuid)
+if(NOT stduuid_POPULATED)
+    message(STATUS "Fetching stduuid...")
+    FetchContent_Populate(stduuid)
+    add_subdirectory(${stduuid_SOURCE_DIR} ${stduuid_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 # -----------------------------
 
 add_executable(instruct
@@ -104,6 +116,7 @@ target_link_libraries(instruct
     PRIVATE picosha2 # Single header file.
     PRIVATE loguru::loguru
     # PRIVATE cpp-httplib # Single header file.
+    PRIVATE stduuid # Just headers.
     PRIVATE ${CMAKE_DL_LIBS}
 )
 

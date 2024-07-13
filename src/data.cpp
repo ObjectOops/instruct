@@ -15,6 +15,13 @@ namespace keys {
     static const std::string PASSWORD_SHA256 {"password_sha256"};
     static const std::string PASSWORD_SALT {"password_salt"};
     static const std::string FIRST_TIME {"first_time"};
+    static const std::string CODE_PORTS {"code_ports"};
+    static const std::string CODE_PORT_RANGE {"code_port_range"};
+    static const std::string USE_RANDOM_PORTS {"use_random_ports"};
+    static const std::string UUID {"uuid"};
+    static const std::string DISPLAY_NAME {"display_name"};
+    static const std::string ELEVATED_PRIVILEGES {"elevated_privileges"};
+    static const std::string STUDENTS {"students"};
 }
 
 Data::Data(const std::filesystem::path &filePath) : 
@@ -34,16 +41,21 @@ void Data::saveData() {
 void Data::initEmpty() {
     IData::instructorData = std::make_unique<IData>();
     IData::instructorData->filePath = constants::INSTRUCTOR_CONFIG;
+    SData::studentsData = std::make_unique<SData>();
+    SData::studentsData->filePath = constants::STUDENTS_CONFIG;
 }
 
 void Data::initAll() {
     IData::instructorData = std::make_unique<IData>(constants::INSTRUCTOR_CONFIG);
+    SData::studentsData = std::make_unique<SData>(constants::STUDENTS_CONFIG);
     
     LOG_S(INFO) << "Instructor config data: \n" << IData::instructorData->yaml;
+    LOG_S(1) << "Students config data: \n" << SData::studentsData->yaml;
 }
 
 void Data::saveAll() {
     IData::instructorData->saveData();
+    SData::studentsData->saveData();
 }
 
 IData::IData(const std::filesystem::path &filePath) : Data {filePath} {
@@ -65,5 +77,54 @@ void IData::saveData() {
     
     Data::saveData();
 }
+
+SData::SData(const std::filesystem::path &filePath) : Data {filePath} {
+    authHost = yaml[keys::AUTH_HOST].as<std::string>();
+    authPort = yaml[keys::AUTH_PORT].as<int>();
+    codePorts = yaml[keys::CODE_PORTS].as<std::vector<int>>();
+    codePortRange = yaml[keys::CODE_PORT_RANGE].as<std::pair<int, int>>();
+    useRandomPorts = yaml[keys::USE_RANDOM_PORTS].as<bool>();
+    students = yaml[keys::STUDENTS].as<std::vector<Student>>();
+}
+
+void SData::saveData() {
+    yaml[keys::AUTH_HOST] = authHost;
+    yaml[keys::AUTH_PORT] = authPort;
+    yaml[keys::CODE_PORTS] = codePorts;
+    yaml[keys::CODE_PORT_RANGE] = codePortRange;
+    yaml[keys::USE_RANDOM_PORTS] = useRandomPorts;
+    yaml[keys::STUDENTS] = students;
+    
+    Data::saveData();
+}
+
+}
+
+namespace YAML {
+
+using instruct::SData;
+namespace keys = instruct::keys;
+
+template<>
+struct convert<SData::Student> {
+    static Node encode(const SData::Student &rhs) {
+        Node node;
+        node[keys::UUID] = uuids::to_string(rhs.uuid);
+        node[keys::DISPLAY_NAME] = rhs.displayName;
+        node[keys::PASSWORD_SHA256] = rhs.pswdSHA256;
+        node[keys::PASSWORD_SALT] = rhs.pswdSalt;
+        node[keys::ELEVATED_PRIVILEGES] = rhs.elevatedPriveleges;
+        return node;
+    }
+    static bool decode(const Node &node, SData::Student &rhs) {
+        rhs.uuid = uuids::uuid::from_string(node[keys::UUID].as<std::string>()).value();
+        rhs.displayName = node[keys::DISPLAY_NAME].as<std::string>();
+        rhs.pswdSHA256 = node[keys::PASSWORD_SHA256].as<std::string>();
+        rhs.pswdSalt = node[keys::PASSWORD_SALT].as<std::string>();
+        rhs.elevatedPriveleges = node[keys::ELEVATED_PRIVILEGES].as<bool>();
+
+        return true;
+    }
+};
 
 }
