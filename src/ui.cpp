@@ -71,6 +71,8 @@ void ui::print(const std::string &s) {
     std::cout << s;
 }
 
+static bool instructSetup(const std::string &);
+
 std::tuple<bool, int> ui::setupMenu() {
     auto setupScreen {ftxui::ScreenInteractive::Fullscreen()};
 
@@ -160,7 +162,7 @@ std::tuple<bool, int> ui::setupMenu() {
     return std::make_tuple(true, EXIT_SUCCESS);
 }
 
-bool ui::instructSetup(const std::string &instructPswd) {
+static bool instructSetup(const std::string &instructPswd) {
     instruct::term::enableAlternateScreenBuffer();
     
     auto nestedSetupScreen {ftxui::Screen::Create(ftxui::Dimension::Full())};
@@ -247,6 +249,30 @@ bool ui::instructSetup(const std::string &instructPswd) {
     return true;
 }
 
+namespace {
+    struct TitleBarButtonContents {
+        ftxui::ConstStringRef label;
+        ftxui::Closure on_click;
+    };
+    struct TitleBarMenuContents {
+        std::string label;
+        std::vector<TitleBarButtonContents> options;
+    };
+}
+
+static void createTitleBarMenus(
+    std::vector<TitleBarMenuContents> &, ftxui::Components &, bool *
+);
+static void collapseInactiveTitleBarMenus(const int, bool *, int &);
+static void renderTitleBarMenus(
+    int, 
+    const int, 
+    std::vector<TitleBarMenuContents> &, 
+    ftxui::Components &, 
+    ftxui::Elements &, 
+    bool *
+);
+
 bool ui::mainMenu() {
     auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
     
@@ -273,14 +299,6 @@ This message will only show once.)");
     std::string runAllTestsButtonLabel {dynamicLabels.ratbl};
     // ---------------------------------------------------------
     
-    struct TitleBarButtonContents {
-        ftxui::ConstStringRef label;
-        ftxui::Closure on_click;
-    };
-    struct TitleBarMenuContents {
-        std::string label;
-        std::vector<TitleBarButtonContents> options;
-    };
     std::vector<TitleBarMenuContents> titleBarMenuContents {
         {
             "Code", {
@@ -350,23 +368,7 @@ This message will only show once.)");
     const int titleBarMenuCount {static_cast<int>(titleBarMenuContents.size())};
     ftxui::Components titleBarMenus {};
     bool titleBarMenusShown [titleBarMenuCount] {};
-    int titleBarMenuIdx {};
-    for (auto &menuContents : titleBarMenuContents) {
-        ftxui::Components buttons {};
-        for (auto &buttonContents : menuContents.options) {
-            buttons.push_back(ftxui::Button(
-                buttonContents.label, buttonContents.on_click, ftxui::ButtonOption::Ascii()
-            ));
-        }
-        titleBarMenus.push_back(
-            ftxui::Collapsible(
-                menuContents.label, 
-                ftxui::Container::Vertical(buttons), 
-                &titleBarMenusShown[titleBarMenuIdx]
-            )
-        );
-        ++titleBarMenuIdx;
-    }
+    createTitleBarMenus(titleBarMenuContents, titleBarMenus, titleBarMenusShown);
     struct {
         int problemCount {};
         ftxui::Component renderer {ftxui::Renderer([&] {
@@ -396,25 +398,9 @@ This message will only show once.)");
             exitButton
         }), 
         [&] {
-            int newLastTitleBarMenuIdx {-1}, collapseTitleBarIndex {-1};
-            for (
-                int titleBarMenuShownIdx {}; 
-                titleBarMenuShownIdx < titleBarMenuCount; 
-                ++titleBarMenuShownIdx
-            ) {
-                if (titleBarMenusShown[titleBarMenuShownIdx] 
-                    && titleBarMenuShownIdx == lastTitleBarMenuIdx) {
-                    collapseTitleBarIndex = titleBarMenuShownIdx;
-                } else if (titleBarMenusShown[titleBarMenuShownIdx]) {
-                    newLastTitleBarMenuIdx = titleBarMenuShownIdx;
-                }
-            }
-            if (newLastTitleBarMenuIdx != -1) {
-                lastTitleBarMenuIdx = newLastTitleBarMenuIdx;
-                if (collapseTitleBarIndex != -1) {
-                    titleBarMenusShown[collapseTitleBarIndex] = false;
-                }
-            }
+            collapseInactiveTitleBarMenus(
+                titleBarMenuCount, titleBarMenusShown, lastTitleBarMenuIdx
+            );
             
             /*
             Collapsible Menu Rendering Nuances:
@@ -428,63 +414,14 @@ This message will only show once.)");
                 // +4 for unicode symbol and border.
                 totalTitleBarMenuBuffer += titleBarMenuContent.label.length() + 4;
             }
-            int titleBarMenuBuffer {totalTitleBarMenuBuffer};
-            for (
-                int rTitleBarMenuIdx {titleBarMenuCount - 1}; 
-                rTitleBarMenuIdx >= 0; 
-                --rTitleBarMenuIdx
-            ) {
-                // +4 for unicode symbol and border.
-                titleBarMenuBuffer -= titleBarMenuContents
-                    .at(rTitleBarMenuIdx).label.length() + 4;
-                ftxui::Component &titleBarMenu {titleBarMenus.at(rTitleBarMenuIdx)};
-                ftxui::Element e_titleBarMenu {titleBarMenu->Render() | ftxui::border};
-                ftxui::Element e_titleBarMenuBuffer {
-                    ftxui::emptyElement() 
-                    | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, titleBarMenuBuffer)
-                };
-                TitleBarMenuContents &currTitleBarMenuContents {
-                    titleBarMenuContents.at(rTitleBarMenuIdx)
-                };
-                int currTitleBarMenuContentsWidthHeight [2] {
-                    // +3 for left border and button edges.
-                    static_cast<int>(std::max(
-                        currTitleBarMenuContents.label.length(), 
-                        std::max_element(
-                            currTitleBarMenuContents.options.begin(), 
-                            currTitleBarMenuContents.options.end(), 
-                            [] (
-                                const TitleBarButtonContents &lhs, 
-                                const TitleBarButtonContents &rhs
-                            ) {
-                                return lhs.label->length() < rhs.label->length();
-                            }
-                        )->label->length()
-                    )) + 3, 
-                    // +3 for menu label and border.
-                    static_cast<int>(currTitleBarMenuContents.options.size() + 3)
-                };
-                ftxui::Elements titleBarMenuBackground {};
-                for (int bgRow {}; bgRow < currTitleBarMenuContentsWidthHeight[1]; ++bgRow) {
-                    titleBarMenuBackground.push_back(ftxui::text(
-                        std::string (currTitleBarMenuContentsWidthHeight[0], ' ')
-                    ));
-                }
-                e_titleBarMenus.push_back(
-                    ftxui::vbox(
-                        ftxui::hbox({
-                            e_titleBarMenuBuffer, 
-                            titleBarMenusShown[rTitleBarMenuIdx] 
-                            ? ftxui::dbox(
-                                ftxui::vbox(titleBarMenuBackground), 
-                                e_titleBarMenu
-                            )
-                            : e_titleBarMenu
-                        }), 
-                        ftxui::filler()
-                    )
-                );
-            }
+            renderTitleBarMenus(
+                totalTitleBarMenuBuffer, 
+                titleBarMenuCount, 
+                titleBarMenuContents, 
+                titleBarMenus, 
+                e_titleBarMenus, 
+                titleBarMenusShown
+            );
             return ftxui::hbox({
                 ftxui::dbox({
                     ftxui::hbox({
@@ -519,6 +456,115 @@ This message will only show once.)");
     // Escape also brings up exit menu.
     
     return true;
+}
+
+static void createTitleBarMenus(
+    std::vector<TitleBarMenuContents> &titleBarMenuContents, ftxui::Components &titleBarMenus, bool *titleBarMenusShown
+) {
+    int titleBarMenuIdx {};
+    for (auto &menuContents : titleBarMenuContents) {
+        ftxui::Components buttons {};
+        for (auto &buttonContents : menuContents.options) {
+            buttons.push_back(ftxui::Button(
+                buttonContents.label, buttonContents.on_click, ftxui::ButtonOption::Ascii()
+            ));
+        }
+        titleBarMenus.push_back(
+            ftxui::Collapsible(
+                menuContents.label, 
+                ftxui::Container::Vertical(buttons), 
+                &titleBarMenusShown[titleBarMenuIdx]
+            )
+        );
+        ++titleBarMenuIdx;
+    }
+}
+static void collapseInactiveTitleBarMenus(const int titleBarMenuCount, bool *titleBarMenusShown, int &lastTitleBarMenuIdx) {
+    int newLastTitleBarMenuIdx {-1}, collapseTitleBarIndex {-1};
+    for (
+        int titleBarMenuShownIdx {}; 
+        titleBarMenuShownIdx < titleBarMenuCount; 
+        ++titleBarMenuShownIdx
+    ) {
+        if (titleBarMenusShown[titleBarMenuShownIdx] 
+            && titleBarMenuShownIdx == lastTitleBarMenuIdx) {
+            collapseTitleBarIndex = titleBarMenuShownIdx;
+        } else if (titleBarMenusShown[titleBarMenuShownIdx]) {
+            newLastTitleBarMenuIdx = titleBarMenuShownIdx;
+        }
+    }
+    if (newLastTitleBarMenuIdx != -1) {
+        lastTitleBarMenuIdx = newLastTitleBarMenuIdx;
+        if (collapseTitleBarIndex != -1) {
+            titleBarMenusShown[collapseTitleBarIndex] = false;
+        }
+    }
+}
+static void renderTitleBarMenus(
+    int totalTitleBarMenuBuffer, 
+    const int titleBarMenuCount, 
+    std::vector<TitleBarMenuContents> &titleBarMenuContents, 
+    ftxui::Components &titleBarMenus, 
+    ftxui::Elements &e_titleBarMenus, 
+    bool *titleBarMenusShown
+) {
+    int titleBarMenuBuffer {totalTitleBarMenuBuffer};
+    for (
+        int rTitleBarMenuIdx {titleBarMenuCount - 1}; 
+        rTitleBarMenuIdx >= 0; 
+        --rTitleBarMenuIdx
+    ) {
+        // +4 for unicode symbol and border.
+        titleBarMenuBuffer -= titleBarMenuContents
+            .at(rTitleBarMenuIdx).label.length() + 4;
+        ftxui::Component &titleBarMenu {titleBarMenus.at(rTitleBarMenuIdx)};
+        ftxui::Element e_titleBarMenu {titleBarMenu->Render() | ftxui::border};
+        ftxui::Element e_titleBarMenuBuffer {
+            ftxui::emptyElement() 
+            | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, titleBarMenuBuffer)
+        };
+        TitleBarMenuContents &currTitleBarMenuContents {
+            titleBarMenuContents.at(rTitleBarMenuIdx)
+        };
+        int currTitleBarMenuContentsWidthHeight [2] {
+            // +3 for left border and button edges.
+            static_cast<int>(std::max(
+                currTitleBarMenuContents.label.length(), 
+                std::max_element(
+                    currTitleBarMenuContents.options.begin(), 
+                    currTitleBarMenuContents.options.end(), 
+                    [] (
+                        const TitleBarButtonContents &lhs, 
+                        const TitleBarButtonContents &rhs
+                    ) {
+                        return lhs.label->length() < rhs.label->length();
+                    }
+                )->label->length()
+            )) + 3, 
+            // +3 for menu label and border.
+            static_cast<int>(currTitleBarMenuContents.options.size() + 3)
+        };
+        ftxui::Elements titleBarMenuBackground {};
+        for (int bgRow {}; bgRow < currTitleBarMenuContentsWidthHeight[1]; ++bgRow) {
+            titleBarMenuBackground.push_back(ftxui::text(
+                std::string (currTitleBarMenuContentsWidthHeight[0], ' ')
+            ));
+        }
+        e_titleBarMenus.push_back(
+            ftxui::vbox(
+                ftxui::hbox({
+                    e_titleBarMenuBuffer, 
+                    titleBarMenusShown[rTitleBarMenuIdx] 
+                    ? ftxui::dbox(
+                        ftxui::vbox(titleBarMenuBackground), 
+                        e_titleBarMenu
+                    )
+                    : e_titleBarMenu
+                }), 
+                ftxui::filler()
+            )
+        );
+    }
 }
 
 }

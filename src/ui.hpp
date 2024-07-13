@@ -9,7 +9,6 @@ namespace instruct::ui {
     bool saveAllHandled();
     void print(const std::string &);
     std::tuple<bool, int> setupMenu();
-    bool instructSetup(const std::string &);
     bool mainMenu();
 }
 
