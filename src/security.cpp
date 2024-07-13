@@ -34,11 +34,11 @@ bool sec::instanceActive() {
 }
 bool sec::createInstance() {
     try {
-        std::thread worker {[&] {
+        std::thread worker {[] {
             httplib::Server server {};
             server.Get(
                 "/heartbeat", 
-                [&] (const httplib::Request &, httplib::Response &res) {
+                [] (const httplib::Request &, httplib::Response &res) {
                     DLOG_F(INFO, "Heartbeat connection received.");
                     res.set_content(ALIVE_CODE, "text/plain");
                 }

@@ -73,7 +73,6 @@ bool setup::setDefaults() {
         SData::studentsData->set_codePorts({});
         SData::studentsData->set_codePortRange({3001, 4000});
         SData::studentsData->set_useRandomPorts(true);
-        SData::studentsData->set_students({{uuids::uuid::from_string("9d5b69cc-1aca-46bd-940a-de1f110357a9").value(), "John Doe", "qwertyuiop", "asdf", false}});
         DLOG_F(INFO, "Saved default data.");
     } catch (const std::exception &e) {
         setupError.errCode = std::make_error_code(std::errc::io_error);

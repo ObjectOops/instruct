@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
+#include <memory>
 
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/component/component.hpp"
@@ -461,8 +462,21 @@ This message will only show once.)");
         }
     )};
     
-    ftxui::Components studentBoxes {};
+    // const std::vector<SData::Student> &sdata {SData::studentsData->get_students()};
+    // const int studentCount {static_cast<int>(sdata.size())};
     
+    // ftxui::Components studentBoxes {};
+    // studentBoxes.reserve(studentCount);
+    // std::unique_ptr<bool> u_studentBoxStates {std::make_unique<bool>(studentCount)};
+    // bool *p_studentBoxStates {u_studentBoxStates.get()};
+    
+    // for (int studentDataIdx {}; studentDataIdx < studentCount; ++studentDataIdx) {
+    //     studentBoxes.push_back(ftxui::Checkbox(
+    //         sdata.at(studentDataIdx).displayName, &p_studentBoxStates[0])
+    //     );
+    // }
+    // ftxui::CheckboxOption op;
+    // // op.
     
     ftxui::Component app {ftxui::Renderer(titleBar, [&] {
         return ftxui::vbox(
@@ -478,7 +492,9 @@ This message will only show once.)");
 }
 
 static void createTitleBarMenus(
-    std::vector<TitleBarMenuContents> &titleBarMenuContents, ftxui::Components &titleBarMenus, bool *titleBarMenusShown
+    std::vector<TitleBarMenuContents> &titleBarMenuContents, 
+    ftxui::Components &titleBarMenus, 
+    bool *titleBarMenusShown
 ) {
     int titleBarMenuIdx {};
     for (auto &menuContents : titleBarMenuContents) {

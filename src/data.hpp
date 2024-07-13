@@ -1,10 +1,11 @@
 #ifndef INSTRUCT_DATA_HPP
 #define INSTRUCT_DATA_HPP
 
+#include <unordered_map>
 #include <filesystem>
 #include <memory>
 #include <string>
-#include <vector>
+#include <set>
 
 #include "yaml-cpp/yaml.h"
 #include "uuid.h"
@@ -64,7 +65,7 @@ namespace instruct {
         
         DATA_ATTR(std::string, authHost)
         DATA_ATTR(int, authPort)
-        DATA_ATTR(std::vector<int>, codePorts)
+        DATA_ATTR(std::set<int>, codePorts)
         DATA_ATTR(SINGLE(std::pair<int, int>), codePortRange)
         DATA_ATTR(bool, useRandomPorts)
         
@@ -75,7 +76,7 @@ namespace instruct {
             std::string pswdSalt;
             bool elevatedPriveleges;
         };
-        DATA_ATTR(std::vector<Student>, students)
+        DATA_ATTR(SINGLE(std::unordered_map<uuids::uuid, Student>), students)
         
         inline static std::unique_ptr<SData> studentsData;
     };
