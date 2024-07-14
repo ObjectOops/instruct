@@ -1,3 +1,5 @@
+#include <unordered_map>
+#include <unordered_set>
 #include <filesystem>
 #include <exception>
 #include <algorithm>
@@ -9,6 +11,7 @@
 #include "ftxui/component/component.hpp"
 
 #include "loguru.hpp"
+#include "uuid.h"
 
 #include "notification.hpp"
 #include "constants.hpp"
@@ -273,6 +276,12 @@ static void renderTitleBarMenus(
     ftxui::Elements &, 
     bool *
 );
+static void createStudentPane(
+    const std::unordered_map<uuids::uuid, instruct::SData::Student> &, 
+    std::unordered_set<uuids::uuid> &, 
+    bool *, 
+    ftxui::Components &
+);
 
 bool ui::mainMenu() {
     auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
@@ -462,24 +471,29 @@ This message will only show once.)");
         }
     )};
     
-    // const std::vector<SData::Student> &sdata {SData::studentsData->get_students()};
-    // const int studentCount {static_cast<int>(sdata.size())};
+    const std::unordered_map<uuids::uuid, SData::Student> &studentMap {
+        SData::studentsData->get_students()
+    };
+    const int studentCount {static_cast<int>(studentMap.size())};
     
-    // ftxui::Components studentBoxes {};
-    // studentBoxes.reserve(studentCount);
-    // std::unique_ptr<bool> u_studentBoxStates {std::make_unique<bool>(studentCount)};
-    // bool *p_studentBoxStates {u_studentBoxStates.get()};
+    ftxui::Components studentBoxes {};
+    studentBoxes.reserve(studentCount);
+    std::unique_ptr<bool []> u_studentBoxStates {std::make_unique<bool []>(studentCount)};
+    bool *p_studentBoxStates {u_studentBoxStates.get()};
+    std::unordered_set<uuids::uuid> selectedStudentUUIDS {};
     
-    // for (int studentDataIdx {}; studentDataIdx < studentCount; ++studentDataIdx) {
-    //     studentBoxes.push_back(ftxui::Checkbox(
-    //         sdata.at(studentDataIdx).displayName, &p_studentBoxStates[0])
-    //     );
-    // }
-    // ftxui::CheckboxOption op;
-    // // op.
+    createStudentPane(studentMap, selectedStudentUUIDS, p_studentBoxStates, studentBoxes);
     
-    ftxui::Component app {ftxui::Renderer(titleBar, [&] {
-        return ftxui::vbox(
+    ftxui::Component studentPane {ftxui::Container::Vertical(studentBoxes)};
+    
+    ftxui::Component app {ftxui::Renderer(
+        ftxui::Container::Vertical({titleBar, studentPane}), 
+        [&] {
+        return ftxui::dbox(
+            ftxui::vbox( // 3 --> height of title bar.
+                ftxui::emptyElement() | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, 3), 
+                studentPane->Render()
+            ), 
             titleBar->Render()
         );
     })};
@@ -617,6 +631,33 @@ static void renderTitleBarMenus(
                 ftxui::filler()
             )
         );
+    }
+}
+static void createStudentPane(
+    const std::unordered_map<uuids::uuid, 
+    instruct::SData::Student> &studentMap, 
+    std::unordered_set<uuids::uuid> &selectedStudentUUIDS, 
+    bool *p_studentBoxStates, 
+    ftxui::Components &studentBoxes
+) {
+    int studentBoxIdx {};
+    for (const std::pair<uuids::uuid, SData::Student> &studentData : studentMap) {
+        ftxui::CheckboxOption checkboxOption {ftxui::CheckboxOption::Simple()};
+        // checkboxOption.checked = &p_studentBoxStates[studentBoxIdx];
+        // checkboxOption.label = studentData.second.displayName;
+        checkboxOption.on_change = [=, &selectedStudentUUIDS] {
+            if (p_studentBoxStates[studentBoxIdx]) {
+                selectedStudentUUIDS.emplace(studentData.first);
+            } else {
+                selectedStudentUUIDS.erase(studentData.first);
+            }
+        };
+        // The library developer forgot to implement a constructor, 
+        // so this is a workaround.
+        studentBoxes.push_back(ftxui::Checkbox(
+            studentData.second.displayName, &p_studentBoxStates[studentBoxIdx], checkboxOption
+        ));
+        ++studentBoxIdx;
     }
 }
 
