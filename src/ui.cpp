@@ -276,13 +276,14 @@ static void renderTitleBarMenus(
     ftxui::Elements &, 
     bool *
 );
-static void createStudentPane(
+static void createStudentBoxes(
     const std::unordered_map<uuids::uuid, instruct::SData::Student> &, 
     std::unordered_set<uuids::uuid> &, 
     bool *, 
     ftxui::Components &
 );
 
+// This is a very large function. The main UI does a lot of things.
 bool ui::mainMenu() {
     auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
     
@@ -482,7 +483,7 @@ This message will only show once.)");
     bool *p_studentBoxStates {u_studentBoxStates.get()};
     std::unordered_set<uuids::uuid> selectedStudentUUIDS {};
     
-    createStudentPane(studentMap, selectedStudentUUIDS, p_studentBoxStates, studentBoxes);
+    createStudentBoxes(studentMap, selectedStudentUUIDS, p_studentBoxStates, studentBoxes);
     
     ftxui::Component studentPane {ftxui::Container::Vertical(studentBoxes)};
     
@@ -633,7 +634,7 @@ static void renderTitleBarMenus(
         );
     }
 }
-static void createStudentPane(
+static void createStudentBoxes(
     const std::unordered_map<uuids::uuid, 
     instruct::SData::Student> &studentMap, 
     std::unordered_set<uuids::uuid> &selectedStudentUUIDS, 
@@ -641,21 +642,40 @@ static void createStudentPane(
     ftxui::Components &studentBoxes
 ) {
     int studentBoxIdx {};
-    for (const std::pair<uuids::uuid, SData::Student> &studentData : studentMap) {
+    std::vector<const SData::Student *> p_studentVec {};
+    p_studentVec.reserve(studentMap.size());
+    for (auto &[key, value] : studentMap) {
+        p_studentVec.push_back(&value);
+    }
+    // Sort labels by lexicographical order.
+    std::sort(
+        p_studentVec.begin(), 
+        p_studentVec.end(), 
+        [] (const SData::Student *lhs, const SData::Student *rhs) {
+            return lhs->displayName < rhs->displayName;
+        }
+    );
+    for (const SData::Student *p_studentData : p_studentVec) {
         ftxui::CheckboxOption checkboxOption {ftxui::CheckboxOption::Simple()};
         // checkboxOption.checked = &p_studentBoxStates[studentBoxIdx];
         // checkboxOption.label = studentData.second.displayName;
+        
+        // Note that this lambda is capturing by value.
+        // Only add a UUID to the selected set if the state 
+        // changed to true.
         checkboxOption.on_change = [=, &selectedStudentUUIDS] {
             if (p_studentBoxStates[studentBoxIdx]) {
-                selectedStudentUUIDS.emplace(studentData.first);
+                selectedStudentUUIDS.emplace(p_studentData->uuid);
             } else {
-                selectedStudentUUIDS.erase(studentData.first);
+                selectedStudentUUIDS.erase(p_studentData->uuid);
             }
         };
         // The library developer forgot to implement a constructor, 
         // so this is a workaround.
         studentBoxes.push_back(ftxui::Checkbox(
-            studentData.second.displayName, &p_studentBoxStates[studentBoxIdx], checkboxOption
+            p_studentData->displayName, 
+            &p_studentBoxStates[studentBoxIdx], 
+            checkboxOption
         ));
         ++studentBoxIdx;
     }

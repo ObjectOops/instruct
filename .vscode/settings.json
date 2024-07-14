@@ -77,6 +77,7 @@
         "timer": "cpp",
         "fstream": "cpp",
         "future": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "span": "cpp"
     }
 }
