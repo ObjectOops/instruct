@@ -494,7 +494,12 @@ This message will only show once.)");
         lastTitleBarMenuIdx
     );
     
-    ftxui::Component studentPane {ftxui::Container::Vertical(studentBoxes)};
+    ftxui::Component studentPane {studentBoxes.empty() 
+        ? ftxui::Renderer([] {return ftxui::text("No students to display.");}) 
+        : ftxui::Container::Vertical(studentBoxes)
+    };
+    
+    
     
     ftxui::Component app {ftxui::Renderer(
         ftxui::Container::Vertical({titleBar, studentPane}), 

@@ -39,7 +39,8 @@ bool setup::createDataDir() {
 bool setup::populateDataDir() {
     std::filesystem::path paths [] {
         constants::INSTRUCTOR_CONFIG, 
-        constants::STUDENTS_CONFIG
+        constants::STUDENTS_CONFIG, 
+        constants::TESTS_CONFIG
     };
     for (std::filesystem::path &path : paths) {
         try {
@@ -73,6 +74,10 @@ bool setup::setDefaults() {
         SData::studentsData->set_codePorts({});
         SData::studentsData->set_codePortRange({3001, 4000});
         SData::studentsData->set_useRandomPorts(true);
+        DLOG_F(INFO, "Saved default data.");
+        
+        DLOG_F(INFO, "Assigning default tests data.");
+        TData::testsData->set_selectedTestUUIDs({});
         DLOG_F(INFO, "Saved default data.");
     } catch (const std::exception &e) {
         setupError.errCode = std::make_error_code(std::errc::io_error);

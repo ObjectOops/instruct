@@ -23,6 +23,10 @@ namespace keys {
     static const std::string DISPLAY_NAME {"display_name"};
     static const std::string ELEVATED_PRIVILEGES {"elevated_privileges"};
     static const std::string STUDENTS {"students"};
+    static const std::string SELECTED_TESTS {"selected_test_uuids"};
+    static const std::string TESTS {"tests"};
+    static const std::string I_RUN_CMD {"instructor_run_command"};
+    static const std::string S_RUN_CMD {"student_run_command"};
 }
 
 Data::Data(const std::filesystem::path &filePath) : 
@@ -44,19 +48,25 @@ void Data::initEmpty() {
     IData::instructorData->filePath = constants::INSTRUCTOR_CONFIG;
     SData::studentsData = std::make_unique<SData>();
     SData::studentsData->filePath = constants::STUDENTS_CONFIG;
+    TData::testsData = std::make_unique<TData>();
+    TData::testsData->filePath = constants::TESTS_CONFIG;
 }
 
 void Data::initAll() {
     IData::instructorData = std::make_unique<IData>(constants::INSTRUCTOR_CONFIG);
-    SData::studentsData = std::make_unique<SData>(constants::STUDENTS_CONFIG);
-    
     LOG_S(1) << "Instructor config data: \n" << IData::instructorData->yaml;
+
+    SData::studentsData = std::make_unique<SData>(constants::STUDENTS_CONFIG);
     LOG_S(1) << "Students config data: \n" << SData::studentsData->yaml;
+
+    TData::testsData = std::make_unique<TData>(constants::TESTS_CONFIG);
+    LOG_S(1) << "Tests config data: \n" << TData::testsData->yaml;
 }
 
 void Data::saveAll() {
     IData::instructorData->saveData();
     SData::studentsData->saveData();
+    TData::testsData->saveData();
 }
 
 IData::IData(const std::filesystem::path &filePath) : Data {filePath} {
@@ -110,18 +120,43 @@ void SData::saveData() {
     Data::saveData();
 }
 
+TData::TData(const std::filesystem::path &filePath) : Data {filePath} {
+    selectedTestUUIDs = yaml[keys::SELECTED_TESTS].as<std::unordered_set<uuids::uuid>>();
+    tests = yaml[keys::TESTS].as<std::unordered_map<uuids::uuid, TestCase>>();
+}
+
+void TData::saveData() {
+    yaml[keys::SELECTED_TESTS] = selectedTestUUIDs;
+    yaml[keys::TESTS] = tests;
+    
+    Data::saveData();
+}
+
 }
 
 namespace YAML {
 
 using instruct::SData;
+using instruct::TData;
 namespace keys = instruct::keys;
+
+template<>
+struct convert<uuids::uuid> {
+    static Node encode(const uuids::uuid &rhs) {
+        return Node {uuids::to_string(rhs)};
+    }
+    static bool decode(const Node &node, uuids::uuid &rhs) {
+        rhs = uuids::uuid::from_string(node.as<std::string>()).value();
+
+        return true;
+    }
+};
 
 template<>
 struct convert<SData::Student> {
     static Node encode(const SData::Student &rhs) {
         Node node;
-        node[keys::UUID] = uuids::to_string(rhs.uuid);
+        node[keys::UUID] = rhs.uuid;
         node[keys::DISPLAY_NAME] = rhs.displayName;
         node[keys::PASSWORD_SHA256] = rhs.pswdSHA256;
         node[keys::PASSWORD_SALT] = rhs.pswdSalt;
@@ -129,7 +164,7 @@ struct convert<SData::Student> {
         return node;
     }
     static bool decode(const Node &node, SData::Student &rhs) {
-        rhs.uuid = uuids::uuid::from_string(node[keys::UUID].as<std::string>()).value();
+        rhs.uuid = node[keys::UUID].as<uuids::uuid>();
         rhs.displayName = node[keys::DISPLAY_NAME].as<std::string>();
         rhs.pswdSHA256 = node[keys::PASSWORD_SHA256].as<std::string>();
         rhs.pswdSalt = node[keys::PASSWORD_SALT].as<std::string>();
@@ -146,6 +181,39 @@ struct convert<std::set<int>> {
     }
     static bool decode(const Node &node, std::set<int> &rhs) {
         std::vector<int> vec {node.as<std::vector<int>>()};
+        rhs.insert(vec.begin(), vec.end());
+
+        return true;
+    }
+};
+
+template<>
+struct convert<TData::TestCase> {
+    static Node encode(const TData::TestCase &rhs) {
+        Node node;
+        node[keys::UUID] = rhs.uuid;
+        node[keys::DISPLAY_NAME] = rhs.displayName;
+        node[keys::I_RUN_CMD] = rhs.instructorRunCmd;
+        node[keys::S_RUN_CMD] = rhs.studentRunCmd;
+        return node;
+    }
+    static bool decode(const Node &node, TData::TestCase &rhs) {
+        rhs.uuid = node[keys::UUID].as<uuids::uuid>();
+        rhs.displayName = node[keys::DISPLAY_NAME].as<std::string>();
+        rhs.instructorRunCmd = node[keys::I_RUN_CMD].as<std::string>();
+        rhs.studentRunCmd = node[keys::S_RUN_CMD].as<std::string>();
+
+        return true;
+    }
+};
+
+template<>
+struct convert<std::unordered_set<uuids::uuid>> {
+    static Node encode(const std::unordered_set<uuids::uuid> &rhs) {
+        return Node {std::vector<uuids::uuid> {rhs.begin(), rhs.end()}};
+    }
+    static bool decode(const Node &node, std::unordered_set<uuids::uuid> &rhs) {
+        std::vector<uuids::uuid> vec {node.as<std::vector<uuids::uuid>>()};
         rhs.insert(vec.begin(), vec.end());
 
         return true;

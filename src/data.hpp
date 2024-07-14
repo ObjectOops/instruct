@@ -2,6 +2,7 @@
 #define INSTRUCT_DATA_HPP
 
 #include <unordered_map>
+#include <unordered_set>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -42,6 +43,7 @@ namespace instruct {
         static void initAll();
         static void saveAll();
     };
+
     class IData : public Data {
         public:
         IData() = default;
@@ -57,6 +59,7 @@ namespace instruct {
         
         inline static std::unique_ptr<IData> instructorData;
     };
+
     class SData : public Data {
         public:
         SData() = default;
@@ -79,6 +82,24 @@ namespace instruct {
         DATA_ATTR(SINGLE(std::unordered_map<uuids::uuid, Student>), students)
         
         inline static std::unique_ptr<SData> studentsData;
+    };
+
+    class TData : public Data {
+        public:
+        TData() = default;
+        TData(const std::filesystem::path &);
+        void saveData() override;
+        
+        DATA_ATTR(std::unordered_set<uuids::uuid>, selectedTestUUIDs)
+        struct TestCase {
+            uuids::uuid uuid;
+            std::string displayName;
+            std::string instructorRunCmd;
+            std::string studentRunCmd;
+        };
+        DATA_ATTR(SINGLE(std::unordered_map<uuids::uuid, TestCase>), tests)
+        
+        inline static std::unique_ptr<TData> testsData;
     };
 }
 

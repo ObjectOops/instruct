@@ -64,7 +64,9 @@ bool sec::updateInstructPswd(const std::string &instructPswd) {
         std::mt19937 rng {seed()};
         std::string salt {std::to_string(rng())};
         
-        IData::instructorData->set_pswdSHA256(picosha2::hash256_hex_string(instructPswd + salt));
+        IData::instructorData->set_pswdSHA256(
+            picosha2::hash256_hex_string(instructPswd + salt)
+        );
         IData::instructorData->set_pswdSalt(salt);
     } catch (const std::exception &e) {
         // Only relevant during initial set up.

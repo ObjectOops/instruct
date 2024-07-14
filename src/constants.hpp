@@ -20,6 +20,7 @@ namespace instruct::constants {
 
     inline const std::filesystem::path INSTRUCTOR_CONFIG {DATA_DIR / "instructor_config.yaml"};
     inline const std::filesystem::path STUDENTS_CONFIG {DATA_DIR / "students_config.yaml"};
+    inline const std::filesystem::path TESTS_CONFIG {DATA_DIR / "tests_config.yaml"};
 
     inline constexpr int MAX_INSTRUCTOR_PASSWORD_LENGTH = 16;
     
