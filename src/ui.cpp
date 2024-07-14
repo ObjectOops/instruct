@@ -280,7 +280,9 @@ static void createStudentBoxes(
     const std::unordered_map<uuids::uuid, instruct::SData::Student> &, 
     std::unordered_set<uuids::uuid> &, 
     bool *, 
-    ftxui::Components &
+    ftxui::Components &, 
+    bool *, 
+    int &
 );
 
 // This is a very large function. The main UI does a lot of things.
@@ -483,7 +485,14 @@ This message will only show once.)");
     bool *p_studentBoxStates {u_studentBoxStates.get()};
     std::unordered_set<uuids::uuid> selectedStudentUUIDS {};
     
-    createStudentBoxes(studentMap, selectedStudentUUIDS, p_studentBoxStates, studentBoxes);
+    createStudentBoxes(
+        studentMap, 
+        selectedStudentUUIDS, 
+        p_studentBoxStates, 
+        studentBoxes, 
+        titleBarMenusShown, 
+        lastTitleBarMenuIdx
+    );
     
     ftxui::Component studentPane {ftxui::Container::Vertical(studentBoxes)};
     
@@ -555,6 +564,8 @@ static void collapseInactiveTitleBarMenus(
         if (collapseTitleBarIdx != -1) {
             titleBarMenusShown[collapseTitleBarIdx] = false;
         }
+    } else if (lastTitleBarMenuIdx != -1 && !titleBarMenusShown[lastTitleBarMenuIdx]) {
+        lastTitleBarMenuIdx = -1;
     }
 }
 static void renderTitleBarMenus(
@@ -624,7 +635,8 @@ static void renderTitleBarMenus(
                     e_titleBarMenuBuffer, 
                     titleBarMenusShown[rTitleBarMenuIdx] 
                     ? ftxui::dbox(
-                        ftxui::vbox(titleBarMenuBackground), 
+                        ftxui::vbox(titleBarMenuBackground) 
+                            | ftxui::bgcolor(ftxui::Color::Default), 
                         e_titleBarMenu
                     )
                     : e_titleBarMenu
@@ -639,7 +651,9 @@ static void createStudentBoxes(
     instruct::SData::Student> &studentMap, 
     std::unordered_set<uuids::uuid> &selectedStudentUUIDS, 
     bool *p_studentBoxStates, 
-    ftxui::Components &studentBoxes
+    ftxui::Components &studentBoxes, 
+    bool *titleBarMenusShown, 
+    int &lastTitleBarMenuIdx
 ) {
     int studentBoxIdx {};
     std::vector<const SData::Student *> p_studentVec {};
@@ -660,16 +674,34 @@ static void createStudentBoxes(
         // checkboxOption.checked = &p_studentBoxStates[studentBoxIdx];
         // checkboxOption.label = studentData.second.displayName;
         
-        // Note that this lambda is capturing by value.
+        // Note that this lambda is capturing some variables by value!
         // Only add a UUID to the selected set if the state 
         // changed to true.
-        checkboxOption.on_change = [=, &selectedStudentUUIDS] {
-            if (p_studentBoxStates[studentBoxIdx]) {
+        checkboxOption.on_change = [=, &selectedStudentUUIDS, &lastTitleBarMenuIdx] {
+            // Close a title bar menu if open.
+            if (lastTitleBarMenuIdx != -1) {
+                titleBarMenusShown[lastTitleBarMenuIdx] = false;
+                lastTitleBarMenuIdx = -1;
+                // Suppress the student box's changed state.
+                p_studentBoxStates[studentBoxIdx] = !p_studentBoxStates[studentBoxIdx];
+            } else if (p_studentBoxStates[studentBoxIdx]) {
                 selectedStudentUUIDS.emplace(p_studentData->uuid);
             } else {
                 selectedStudentUUIDS.erase(p_studentData->uuid);
             }
         };
+        
+        checkboxOption.transform = [&] (const ftxui::EntryState &e) {
+            bool titleBarMenusHidden {lastTitleBarMenuIdx == -1};
+            ftxui::EntryState e2 {e};
+            e2.focused = e2.focused && titleBarMenusHidden;
+            ftxui::Element elem {ftxui::CheckboxOption::Simple().transform(e2)};
+            if ((e.focused && titleBarMenusHidden) || e.state) {
+                return elem | ftxui::bgcolor(ftxui::Color::GrayDark);
+            }
+            return elem;
+        };
+        
         // The library developer forgot to implement a constructor, 
         // so this is a workaround.
         studentBoxes.push_back(ftxui::Checkbox(
