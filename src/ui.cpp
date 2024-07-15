@@ -541,27 +541,6 @@ This message will only show once.)");
     // Parent container for all components.
     ftxui::Component mainScreen {ftxui::Container::Vertical({titleBar, mainPanes})};
     
-    // // Modals (exit confirmation, settings, notifications, title bar and pane functions, etc.).
-    // ftxui::Component exitModal {[&] {
-    //     ftxui::Component exitNegative {ftxui::Button(
-    //         "No", [&] {exitModalShown = false;}, ftxui::ButtonOption::Ascii()
-    //     )};
-    //     ftxui::Component exitAffirmative {ftxui::Button(
-    //         "Yes", appScreen.ExitLoopClosure(), ftxui::ButtonOption::Ascii()
-    //     )};
-    //     return ftxui::Renderer(
-    //         ftxui::Container::Horizontal({exitNegative, exitAffirmative}), 
-    //         [&] {
-    //             return ftxui::vbox(
-    //                 ftxui::text("Exit?") | ftxui::hcenter, 
-    //                 exitNegative->Render(), exitAffirmative->Render()
-    //             ) | ftxui::border;
-    //         }
-    //     );
-    // }()};
-    
-    // mainScreen |= ftxui::Modal(exitModal, &exitModalShown);
-    
     ftxui::Component app {ftxui::Renderer(
         mainScreen, 
         [&] {
@@ -573,6 +552,40 @@ This message will only show once.)");
             titleBar->Render()
         );
     })};
+    
+    // Modals (exit confirmation, settings, notifications, title bar and pane functions, etc.).
+    
+    // Exit modal.
+    ftxui::Component exitNegative {ftxui::Button(
+        "No", [&] {exitModalShown = false;}, ftxui::ButtonOption::Ascii()
+    )};
+    ftxui::Component exitAffirmative {ftxui::Button(
+        "Yes", appScreen.ExitLoopClosure(), ftxui::ButtonOption::Ascii()
+    )};
+    ftxui::Component exitModal {[&] {
+        return ftxui::Renderer(
+            ftxui::Container::Horizontal({exitNegative, exitAffirmative}), 
+            [&] {
+                return ftxui::vbox(
+                    ftxui::text("Exit?") | ftxui::bold | ftxui::hcenter, 
+                    ftxui::hbox(
+                        exitNegative->Render() 
+                            | ftxui::hcenter 
+                            | ftxui::border 
+                            | ftxui::flex 
+                            | ftxui::color(ftxui::Color::Red),
+                        exitAffirmative->Render() 
+                            | ftxui::hcenter 
+                            | ftxui::border 
+                            | ftxui::flex 
+                            | ftxui::color(ftxui::Color::GreenYellow)
+                    )
+                ) | ftxui::size(ftxui::WIDTH, ftxui::GREATER_THAN, 20) | ftxui::border;
+            }
+        );
+    }()};
+        
+    app |= ftxui::Modal(exitModal, &exitModalShown);
 
     appScreen.Loop(app);
     // Also reset appScreen cursor manually.
