@@ -40,7 +40,8 @@ bool setup::populateDataDir() {
     std::filesystem::path paths [] {
         constants::INSTRUCTOR_CONFIG, 
         constants::STUDENTS_CONFIG, 
-        constants::TESTS_CONFIG
+        constants::TESTS_CONFIG, 
+        constants::UI_CONFIG
     };
     for (std::filesystem::path &path : paths) {
         try {
@@ -74,10 +75,45 @@ bool setup::setDefaults() {
         SData::studentsData->set_codePorts({});
         SData::studentsData->set_codePortRange({3001, 4000});
         SData::studentsData->set_useRandomPorts(true);
+        #if DEBUG
+        uuids::uuid debugStudentUUID {
+            uuids::uuid::from_string("9d5b69cc-1aca-46bd-940a-de1f110357a9").value()
+        };
+        SData::studentsData->set_students({{
+            debugStudentUUID, 
+            {
+                debugStudentUUID, 
+                "Placeholder Student", 
+                "7bcbc837d7bf10efc0019386dc1eb29637669eac0a6285ad441f31f97f72f25c", 
+                "3805596074", 
+                false
+            }
+        }});
+        #endif
         DLOG_F(INFO, "Saved default data.");
         
         DLOG_F(INFO, "Assigning default tests data.");
         TData::testsData->set_selectedTestUUIDs({});
+        #if DEBUG
+        uuids::uuid debugTestUUID {
+            uuids::uuid::from_string("78127002-2f3d-4655-83fd-d0f6b7e25b95").value()
+        };
+        TData::testsData->set_tests({{
+            debugTestUUID, 
+            {
+                debugTestUUID, 
+                "Placeholder Test", 
+                "echo 'Hello, world!'", 
+                "echo 'Hello, world!'"
+            }
+        }});
+        #endif
+        DLOG_F(INFO, "Saved default data.");
+        
+        DLOG_F(INFO, "Assigning default UI data.");
+        UData::uiData->set_alwaysShowStudentUUIDs(false);
+        UData::uiData->set_alwaysShowTestUUIDs(false);
+        UData::uiData->set_studentPaneWidth(36);
         DLOG_F(INFO, "Saved default data.");
     } catch (const std::exception &e) {
         setupError.errCode = std::make_error_code(std::errc::io_error);

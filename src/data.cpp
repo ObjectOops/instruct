@@ -10,6 +10,7 @@
 namespace instruct {
 
 namespace keys {
+    // Instructor and student keys.
     static const std::string AUTH_HOST {"auth_host"};
     static const std::string AUTH_PORT {"auth_port"};
     static const std::string CODE_PORT {"code_port"};
@@ -23,10 +24,17 @@ namespace keys {
     static const std::string DISPLAY_NAME {"display_name"};
     static const std::string ELEVATED_PRIVILEGES {"elevated_privileges"};
     static const std::string STUDENTS {"students"};
+    
+    // Test keys.
     static const std::string SELECTED_TESTS {"selected_test_uuids"};
     static const std::string TESTS {"tests"};
     static const std::string I_RUN_CMD {"instructor_run_command"};
     static const std::string S_RUN_CMD {"student_run_command"};
+    
+    // UI keys.
+    static const std::string ALWAYS_SHOW_STUDENT_UUIDS {"always_show_student_uuids"};
+    static const std::string ALWAYS_SHOW_TEST_UUIDS {"always_show_test_uuids"};
+    static const std::string STUDENT_PANE_WIDTH {"student_pane_width"};
 }
 
 Data::Data(const std::filesystem::path &filePath) : 
@@ -41,15 +49,22 @@ void Data::saveData() {
     fout.open(filePath);
     fout << yaml;
     fout.close();
+    
+    DLOG_F(1, "Saved data operation.");
 }
 
 void Data::initEmpty() {
     IData::instructorData = std::make_unique<IData>();
     IData::instructorData->filePath = constants::INSTRUCTOR_CONFIG;
+
     SData::studentsData = std::make_unique<SData>();
     SData::studentsData->filePath = constants::STUDENTS_CONFIG;
+
     TData::testsData = std::make_unique<TData>();
     TData::testsData->filePath = constants::TESTS_CONFIG;
+
+    UData::uiData = std::make_unique<UData>();
+    UData::uiData->filePath = constants::UI_CONFIG;    
 }
 
 void Data::initAll() {
@@ -61,12 +76,16 @@ void Data::initAll() {
 
     TData::testsData = std::make_unique<TData>(constants::TESTS_CONFIG);
     LOG_S(1) << "Tests config data: \n" << TData::testsData->yaml;
+    
+    UData::uiData = std::make_unique<UData>(constants::UI_CONFIG);
+    LOG_S(1) << "UI config data: " << UData::uiData->yaml;
 }
 
 void Data::saveAll() {
     IData::instructorData->saveData();
     SData::studentsData->saveData();
     TData::testsData->saveData();
+    UData::uiData->saveData();
 }
 
 IData::IData(const std::filesystem::path &filePath) : Data {filePath} {
@@ -112,8 +131,8 @@ void SData::saveData() {
     
     std::vector<Student> studentVec {};
     studentVec.reserve(students.size());
-    for (const std::pair<uuids::uuid, Student> &studentPair : students) {
-        studentVec.push_back(studentPair.second);
+    for (auto [uuid, student] : students) {
+        studentVec.push_back(student);
     }
     yaml[keys::STUDENTS] = studentVec;
     
@@ -122,12 +141,37 @@ void SData::saveData() {
 
 TData::TData(const std::filesystem::path &filePath) : Data {filePath} {
     selectedTestUUIDs = yaml[keys::SELECTED_TESTS].as<std::unordered_set<uuids::uuid>>();
-    tests = yaml[keys::TESTS].as<std::unordered_map<uuids::uuid, TestCase>>();
+    
+    std::vector<TestCase> testVec {yaml[keys::TESTS].as<std::vector<TestCase>>()};
+    tests.reserve(testVec.size());
+    for (TestCase &test : testVec) {
+        tests.emplace(test.uuid, test);
+    }
 }
 
 void TData::saveData() {
     yaml[keys::SELECTED_TESTS] = selectedTestUUIDs;
-    yaml[keys::TESTS] = tests;
+
+    std::vector<TestCase> testVec {};
+    testVec.reserve(tests.size());
+    for (auto [uuid, test] : tests) {
+        testVec.push_back(test);
+    }
+    yaml[keys::TESTS] = testVec;
+    
+    Data::saveData();
+}
+
+UData::UData(const std::filesystem::path &filePath) : Data {filePath} {
+    alwaysShowStudentUUIDs = yaml[keys::ALWAYS_SHOW_STUDENT_UUIDS].as<bool>();
+    alwaysShowTestUUIDs = yaml[keys::ALWAYS_SHOW_TEST_UUIDS].as<bool>();
+    studentPaneWidth = yaml[keys::STUDENT_PANE_WIDTH].as<int>();
+}
+
+void UData::saveData() {
+    yaml[keys::ALWAYS_SHOW_STUDENT_UUIDS] = alwaysShowStudentUUIDs;
+    yaml[keys::ALWAYS_SHOW_TEST_UUIDS] = alwaysShowTestUUIDs;
+    yaml[keys::STUDENT_PANE_WIDTH] = studentPaneWidth;
     
     Data::saveData();
 }

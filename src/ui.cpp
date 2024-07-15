@@ -276,13 +276,16 @@ static void renderTitleBarMenus(
     ftxui::Elements &, 
     bool *
 );
-static void createStudentBoxes(
-    const std::unordered_map<uuids::uuid, instruct::SData::Student> &, 
+
+template<typename DataType>
+static void createPaneBoxes(
+    const std::unordered_map<uuids::uuid, DataType> &, 
     std::unordered_set<uuids::uuid> &, 
     bool *, 
     ftxui::Components &, 
     bool *, 
-    int &
+    int &, 
+    bool
 );
 
 // This is a very large function. The main UI does a lot of things.
@@ -473,7 +476,8 @@ This message will only show once.)");
             });
         }
     )};
-    
+
+    // Create the student pane.
     const std::unordered_map<uuids::uuid, SData::Student> &studentMap {
         SData::studentsData->get_students()
     };
@@ -485,13 +489,14 @@ This message will only show once.)");
     bool *p_studentBoxStates {u_studentBoxStates.get()};
     std::unordered_set<uuids::uuid> selectedStudentUUIDS {};
     
-    createStudentBoxes(
+    createPaneBoxes(
         studentMap, 
         selectedStudentUUIDS, 
         p_studentBoxStates, 
         studentBoxes, 
         titleBarMenusShown, 
-        lastTitleBarMenuIdx
+        lastTitleBarMenuIdx, 
+        UData::uiData->get_alwaysShowStudentUUIDs()
     );
     
     ftxui::Component studentPane {studentBoxes.empty() 
@@ -499,15 +504,44 @@ This message will only show once.)");
         : ftxui::Container::Vertical(studentBoxes)
     };
     
+    // Create the test pane.
+    const std::unordered_map<uuids::uuid, TData::TestCase> &testMap {
+        TData::testsData->get_tests()
+    };
+    const int testCount {static_cast<int>(testMap.size())};
     
+    ftxui::Components testBoxes {};
+    testBoxes.reserve(testCount);
+    std::unique_ptr<bool []> u_testBoxStates {std::make_unique<bool []>(testCount)};
+    bool *p_testBoxStates {u_testBoxStates.get()};
+        
+    createPaneBoxes(
+        testMap, 
+        TData::testsData->get_selectedTestUUIDs(), 
+        p_testBoxStates, 
+        testBoxes, 
+        titleBarMenusShown, 
+        lastTitleBarMenuIdx, 
+        UData::uiData->get_alwaysShowTestUUIDs()
+    );
+    
+    ftxui::Component testPane {testBoxes.empty() 
+        ? ftxui::Renderer([] {return ftxui::text("No tests to display.");}) 
+        : ftxui::Container::Vertical(testBoxes)
+    };
+    
+    // A separator between the student and test panes.
+    ftxui::Component mainPanes {ftxui::ResizableSplitLeft(
+        studentPane, testPane, &UData::uiData->get_studentPaneWidth()
+    )};
     
     ftxui::Component app {ftxui::Renderer(
-        ftxui::Container::Vertical({titleBar, studentPane}), 
+        ftxui::Container::Vertical({titleBar, mainPanes}), 
         [&] {
         return ftxui::dbox(
             ftxui::vbox( // 3 --> height of title bar.
                 ftxui::emptyElement() | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, 3), 
-                studentPane->Render()
+                mainPanes->Render() | ftxui::flex
             ), 
             titleBar->Render()
         );
@@ -651,70 +685,75 @@ static void renderTitleBarMenus(
         );
     }
 }
-static void createStudentBoxes(
-    const std::unordered_map<uuids::uuid, 
-    instruct::SData::Student> &studentMap, 
-    std::unordered_set<uuids::uuid> &selectedStudentUUIDS, 
-    bool *p_studentBoxStates, 
-    ftxui::Components &studentBoxes, 
+
+template<typename DataType>
+static void createPaneBoxes(
+    const std::unordered_map<uuids::uuid, DataType> &dataMap, 
+    std::unordered_set<uuids::uuid> &selectedDataUUIDS, 
+    bool *p_dataBoxStates, 
+    ftxui::Components &dataBoxes, 
     bool *titleBarMenusShown, 
-    int &lastTitleBarMenuIdx
+    int &lastTitleBarMenuIdx, 
+    bool showUUIDs
 ) {
-    int studentBoxIdx {};
-    std::vector<const SData::Student *> p_studentVec {};
-    p_studentVec.reserve(studentMap.size());
-    for (auto &[key, value] : studentMap) {
-        p_studentVec.push_back(&value);
+    int dataBoxIdx {};
+    std::vector<const DataType *> p_dataVec {};
+    p_dataVec.reserve(dataMap.size());
+    for (auto &[uuid, data] : dataMap) {
+        p_dataVec.push_back(&data);
     }
     // Sort labels by lexicographical order.
     std::sort(
-        p_studentVec.begin(), 
-        p_studentVec.end(), 
-        [] (const SData::Student *lhs, const SData::Student *rhs) {
+        p_dataVec.begin(), 
+        p_dataVec.end(), 
+        [] (const DataType *lhs, const DataType *rhs) {
             return lhs->displayName < rhs->displayName;
         }
     );
-    for (const SData::Student *p_studentData : p_studentVec) {
+    for (const DataType *p_data : p_dataVec) {
         ftxui::CheckboxOption checkboxOption {ftxui::CheckboxOption::Simple()};
-        // checkboxOption.checked = &p_studentBoxStates[studentBoxIdx];
-        // checkboxOption.label = studentData.second.displayName;
+        // checkboxOption.checked = &p_dataBoxStates[dataBoxIdx];
+        // checkboxOption.label = dataData.second.displayName;
         
         // Note that this lambda is capturing some variables by value!
         // Only add a UUID to the selected set if the state 
         // changed to true.
-        checkboxOption.on_change = [=, &selectedStudentUUIDS, &lastTitleBarMenuIdx] {
+        checkboxOption.on_change = [=, &selectedDataUUIDS, &lastTitleBarMenuIdx] {
             // Close a title bar menu if open.
             if (lastTitleBarMenuIdx != -1) {
                 titleBarMenusShown[lastTitleBarMenuIdx] = false;
                 lastTitleBarMenuIdx = -1;
                 // Suppress the student box's changed state.
-                p_studentBoxStates[studentBoxIdx] = !p_studentBoxStates[studentBoxIdx];
-            } else if (p_studentBoxStates[studentBoxIdx]) {
-                selectedStudentUUIDS.emplace(p_studentData->uuid);
+                p_dataBoxStates[dataBoxIdx] = !p_dataBoxStates[dataBoxIdx];
+            } else if (p_dataBoxStates[dataBoxIdx]) {
+                selectedDataUUIDS.emplace(p_data->uuid);
             } else {
-                selectedStudentUUIDS.erase(p_studentData->uuid);
+                selectedDataUUIDS.erase(p_data->uuid);
             }
         };
         
-        checkboxOption.transform = [&] (const ftxui::EntryState &e) {
+        checkboxOption.transform = [&, p_data] (const ftxui::EntryState &e) {
             bool titleBarMenusHidden {lastTitleBarMenuIdx == -1};
             ftxui::EntryState e2 {e};
             e2.focused = e2.focused && titleBarMenusHidden;
             ftxui::Element elem {ftxui::CheckboxOption::Simple().transform(e2)};
             if ((e.focused && titleBarMenusHidden) || e.state) {
-                return elem | ftxui::bgcolor(ftxui::Color::GrayDark);
+                return ftxui::hbox({
+                    elem, 
+                    ftxui::text(showUUIDs ? " " + uuids::to_string(p_data->uuid) : "")
+                }) | ftxui::bgcolor(ftxui::Color::GrayDark);
             }
             return elem;
         };
         
         // The library developer forgot to implement a constructor, 
         // so this is a workaround.
-        studentBoxes.push_back(ftxui::Checkbox(
-            p_studentData->displayName, 
-            &p_studentBoxStates[studentBoxIdx], 
+        dataBoxes.push_back(ftxui::Checkbox(
+            p_data->displayName, 
+            &p_dataBoxStates[dataBoxIdx], 
             checkboxOption
         ));
-        ++studentBoxIdx;
+        ++dataBoxIdx;
     }
 }
 

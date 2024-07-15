@@ -11,18 +11,25 @@
 #include "yaml-cpp/yaml.h"
 #include "uuid.h"
 
-#define DATA_ATTR(TYPE, NAME) \
+#define DATA_ATTR_BASE(QUALIFIERS, TYPE, NAME) \
 private: \
 TYPE NAME; \
 public: \
-inline const TYPE &get_##NAME() { \
+inline QUALIFIERS TYPE &get_##NAME() { \
     return NAME; \
 } \
 inline void set_##NAME(const TYPE &val) { \
     NAME = val; \
     saveData(); \
 }
+
 #define SINGLE(...) __VA_ARGS__
+
+#define DATA_ATTR(TYPE, NAME) \
+DATA_ATTR_BASE(const, SINGLE(TYPE), NAME)
+
+#define DATA_ATTR_REF_MUTABLE(TYPE, NAME) \
+DATA_ATTR_BASE(, SINGLE(TYPE), NAME)
 
 namespace instruct {
     class Data {
@@ -90,7 +97,7 @@ namespace instruct {
         TData(const std::filesystem::path &);
         void saveData() override;
         
-        DATA_ATTR(std::unordered_set<uuids::uuid>, selectedTestUUIDs)
+        DATA_ATTR_REF_MUTABLE(std::unordered_set<uuids::uuid>, selectedTestUUIDs)
         struct TestCase {
             uuids::uuid uuid;
             std::string displayName;
@@ -101,9 +108,24 @@ namespace instruct {
         
         inline static std::unique_ptr<TData> testsData;
     };
+    
+    class UData : public Data {
+        public:
+        UData() = default;
+        UData(const std::filesystem::path &);
+        void saveData() override;
+        
+        DATA_ATTR(bool, alwaysShowStudentUUIDs)
+        DATA_ATTR(bool, alwaysShowTestUUIDs)
+        DATA_ATTR_REF_MUTABLE(int, studentPaneWidth)
+        
+        inline static std::unique_ptr<UData> uiData;
+    };
 }
 
+#undef DATA_ATTR_BASE
 #undef DATA_ATTR
+#undef DATA_ATTR_REF_MUTABLE
 #undef SINGLE
 
 #endif
