@@ -1,4 +1,5 @@
 #include <exception>
+#include <typeinfo>
 #include <thread>
 #include <random>
 
@@ -72,6 +73,7 @@ bool sec::updateInstructPswd(const std::string &instructPswd) {
         // Only relevant during initial set up.
         setup::SetupError &setupError {setup::getSetupError()};
         setupError.errCode = std::make_error_code(std::errc::io_error);
+        setupError.exType = typeid(e).name();
         setupError.exMsg = e.what();
         setupError.msg = "Failed to save instructor password.";
         

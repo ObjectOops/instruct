@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <exception>
+#include <typeinfo>
 #include <fstream>
 #include <memory>
 
@@ -51,6 +52,7 @@ bool setup::populateDataDir() {
             fout.close();
         } catch (const std::exception &e) {
             setupError.errCode = std::make_error_code(std::errc::io_error);
+            setupError.exType = typeid(e).name();
             setupError.exMsg = e.what();
             setupError.msg = 
                 "Failed to create file `" + std::string {path} + "`.";
@@ -117,6 +119,7 @@ bool setup::setDefaults() {
         DLOG_F(INFO, "Saved default data.");
     } catch (const std::exception &e) {
         setupError.errCode = std::make_error_code(std::errc::io_error);
+        setupError.exType = typeid(e).name();
         setupError.exMsg = e.what();
         setupError.msg = "Failed to set defaults.";
         return false;

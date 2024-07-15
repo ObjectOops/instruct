@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include <fstream>
 #include <vector>
 
@@ -118,6 +119,9 @@ SData::SData(const std::filesystem::path &filePath) : Data {filePath} {
     std::vector<Student> studentVec {yaml[keys::STUDENTS].as<std::vector<Student>>()};
     students.reserve(studentVec.size());
     for (Student &student : studentVec) {
+        if (students.count(student.uuid) > 0) {
+            throw std::runtime_error {"Duplicate student UUID."};
+        }
         students.emplace(student.uuid, student);
     }
 }
@@ -145,6 +149,9 @@ TData::TData(const std::filesystem::path &filePath) : Data {filePath} {
     std::vector<TestCase> testVec {yaml[keys::TESTS].as<std::vector<TestCase>>()};
     tests.reserve(testVec.size());
     for (TestCase &test : testVec) {
+        if (tests.count(test.uuid) > 0) {
+            throw std::runtime_error {"Duplicate test UUID."};
+        }
         tests.emplace(test.uuid, test);
     }
 }

@@ -4,6 +4,7 @@
 #include <exception>
 #include <algorithm>
 #include <iostream>
+#include <typeinfo>
 #include <vector>
 #include <memory>
 
@@ -38,6 +39,7 @@ Then, manually resolve your data from `)"
 + std::string {instruct::constants::DATA_DIR} + R"(_copy`.
 See the log file for more details.)"};
             LOG_F(ERROR, msg.c_str());
+            LOG_F(ERROR, typeid(e).name());
             LOG_F(ERROR, e.what());
             std::cerr << msg << '\n';
         } catch (const std::exception &e2) {
@@ -47,6 +49,7 @@ To avoid a loss of information, backup `)" + std::string {instruct::constants::D
 Then, manually resolve your data from the backup.
 See the log file for more details.)"};
             LOG_F(ERROR, msg.c_str());
+            LOG_F(ERROR, typeid(e).name());
             LOG_F(ERROR, e.what());
             std::cerr << msg << '\n';
         }
@@ -121,35 +124,33 @@ std::tuple<bool, int> ui::setupMenu() {
         "Cancel", cancelSetup, ftxui::ButtonOption::Ascii()
     )};
     
-    ftxui::Component setup {
-        ftxui::Renderer(
-            ftxui::Container::Vertical({
-                instructPswdPrompt, 
-                ftxui::Container::Horizontal({
-                    confirmButton, cancelButton
-                })
-            }), 
-            [&] {
-                return ftxui::vbox(
-                    h1 | ftxui::bold | ftxui::hcenter, 
-                    h2, 
-                    ftxui::window(ftxui::text("Password"), instructPswdPrompt->Render()), 
-                    ftxui::hbox(
-                        confirmButton->Render() 
-                            | ftxui::hcenter 
-                            | ftxui::border 
-                            | ftxui::flex 
-                            | ftxui::color(ftxui::Color::GreenYellow), 
-                        cancelButton->Render() 
-                            | ftxui::hcenter 
-                            | ftxui::border 
-                            | ftxui::flex
-                            | ftxui::color(ftxui::Color::Red) 
-                    )
-                ) | ftxui::center;
-            }
-        )
-    };
+    ftxui::Component setup {ftxui::Renderer(
+        ftxui::Container::Vertical({
+            instructPswdPrompt, 
+            ftxui::Container::Horizontal({
+                confirmButton, cancelButton
+            })
+        }), 
+        [&] {
+            return ftxui::vbox(
+                h1 | ftxui::bold | ftxui::hcenter, 
+                h2, 
+                ftxui::window(ftxui::text("Password"), instructPswdPrompt->Render()), 
+                ftxui::hbox(
+                    confirmButton->Render() 
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | ftxui::flex 
+                        | ftxui::color(ftxui::Color::GreenYellow), 
+                    cancelButton->Render() 
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | ftxui::flex
+                        | ftxui::color(ftxui::Color::Red) 
+                )
+            ) | ftxui::center;
+        }
+    )};
     setup |= ftxui::CatchEvent([&] (ftxui::Event event) {
         if (event == ftxui::Event::Escape) {
             cancelSetup();
@@ -198,8 +199,8 @@ static bool instructSetup(const std::string &instructPswd) {
                     + " \"" + setupError.errCode.message() 
                     + "\" " + setupError.errCode.category().name()
                     : "No error code.")
-                + (!setupError.exMsg.empty() 
-                    ? " | Exception: " + setupError.exMsg
+                + (!setupError.exType.empty() 
+                    ? " | Exception: " + setupError.exType + " --> " + setupError.exMsg
                     : " | No exception.")
                 + " | Message: " + setupError.msg
             };
@@ -273,8 +274,7 @@ static void renderTitleBarMenus(
     const int, 
     std::vector<TitleBarMenuContents> &, 
     ftxui::Components &, 
-    ftxui::Elements &, 
-    bool *
+    ftxui::Elements &
 );
 
 template<typename DataType>
@@ -395,13 +395,13 @@ This message will only show once.)");
     struct {
         int problemCount {};
         ftxui::Component renderer {ftxui::Renderer([&] {
-            return ftxui::hbox({
+            return ftxui::hbox(
                 (problemCount == 0
                     ? ftxui::text("Systems Operational") | ftxui::borderLight 
                     : ftxui::text("Problems Encountered: " + std::to_string(problemCount)) 
                         | ftxui::borderLight | ftxui::color(ftxui::Color::Red)), 
                 ftxui::text(instruct::constants::INSTRUCT_VERSION) | ftxui::borderLight
-            });
+            );
         })};
     } titleBarStatus;
     
@@ -410,8 +410,10 @@ This message will only show once.)");
     }, ftxui::ButtonOption::Animated(ftxui::Color::Black, ftxui::Color::GreenYellow))};
     ftxui::Component settingsButton {ftxui::Button("Settings", [] {
     }, ftxui::ButtonOption::Ascii())};
+    
+    bool exitModalShown {false};
     ftxui::Component exitButton {ftxui::Button(
-        "Exit", appScreen.ExitLoopClosure(), ftxui::ButtonOption::Ascii()
+        "Exit", [&] {exitModalShown = true;}, ftxui::ButtonOption::Ascii()
     )};
     
     // The index of the last opened title bar menu.
@@ -451,19 +453,18 @@ This message will only show once.)");
                 titleBarMenuCount, 
                 titleBarMenuContents, 
                 titleBarMenus, 
-                e_titleBarMenus, 
-                titleBarMenusShown
+                e_titleBarMenus
             );
             
-            return ftxui::hbox({
-                ftxui::dbox({
-                    ftxui::hbox({
+            return ftxui::hbox(
+                ftxui::dbox(
+                    ftxui::hbox(
                         ftxui::emptyElement() 
                             | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, totalTitleBarMenuBuffer), 
                         ftxui::vbox(titleBarStatus.renderer->Render(), ftxui::filler())
-                    }), 
+                    ), 
                     ftxui::dbox(e_titleBarMenus)
-                }), 
+                ), 
                 ftxui::filler(), 
                 ftxui::vbox(
                     ftxui::hbox(
@@ -473,7 +474,7 @@ This message will only show once.)");
                     ), 
                     ftxui::filler()
                 )
-            });
+            );
         }
     )};
 
@@ -532,11 +533,37 @@ This message will only show once.)");
     
     // A separator between the student and test panes.
     ftxui::Component mainPanes {ftxui::ResizableSplitLeft(
-        studentPane, testPane, &UData::uiData->get_studentPaneWidth()
+        studentPane | ftxui::vscroll_indicator | ftxui::yframe, 
+        testPane | ftxui::vscroll_indicator | ftxui::yframe, 
+        &UData::uiData->get_studentPaneWidth()
     )};
     
+    // Parent container for all components.
+    ftxui::Component mainScreen {ftxui::Container::Vertical({titleBar, mainPanes})};
+    
+    // // Modals (exit confirmation, settings, notifications, title bar and pane functions, etc.).
+    // ftxui::Component exitModal {[&] {
+    //     ftxui::Component exitNegative {ftxui::Button(
+    //         "No", [&] {exitModalShown = false;}, ftxui::ButtonOption::Ascii()
+    //     )};
+    //     ftxui::Component exitAffirmative {ftxui::Button(
+    //         "Yes", appScreen.ExitLoopClosure(), ftxui::ButtonOption::Ascii()
+    //     )};
+    //     return ftxui::Renderer(
+    //         ftxui::Container::Horizontal({exitNegative, exitAffirmative}), 
+    //         [&] {
+    //             return ftxui::vbox(
+    //                 ftxui::text("Exit?") | ftxui::hcenter, 
+    //                 exitNegative->Render(), exitAffirmative->Render()
+    //             ) | ftxui::border;
+    //         }
+    //     );
+    // }()};
+    
+    // mainScreen |= ftxui::Modal(exitModal, &exitModalShown);
+    
     ftxui::Component app {ftxui::Renderer(
-        ftxui::Container::Vertical({titleBar, mainPanes}), 
+        mainScreen, 
         [&] {
         return ftxui::dbox(
             ftxui::vbox( // 3 --> height of title bar.
@@ -612,8 +639,7 @@ static void renderTitleBarMenus(
     const int titleBarMenuCount, 
     std::vector<TitleBarMenuContents> &titleBarMenuContents, 
     ftxui::Components &titleBarMenus, 
-    ftxui::Elements &e_titleBarMenus, 
-    bool *titleBarMenusShown
+    ftxui::Elements &e_titleBarMenus
 ) {
     // Render the title bar menus in reverse order 
     // per stated nuances.
@@ -633,53 +659,11 @@ static void renderTitleBarMenus(
             ftxui::emptyElement() 
             | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, titleBarMenuBuffer)
         };
-        TitleBarMenuContents &currTitleBarMenuContents {
-            titleBarMenuContents.at(rTitleBarMenuIdx)
-        };
-        
-        // Compute the width and height of a title bar menu 
-        // so we can create a background of spaces to 
-        // cover overlapping characters from other menus.
-        int currTitleBarMenuContentsWidthHeight [2] {
-            // +3 for left border and button edges.
-            static_cast<int>(std::max(
-                currTitleBarMenuContents.label.length(), 
-                std::max_element(
-                    currTitleBarMenuContents.options.begin(), 
-                    currTitleBarMenuContents.options.end(), 
-                    [] (
-                        const TitleBarButtonContents &lhs, 
-                        const TitleBarButtonContents &rhs
-                    ) {
-                        return lhs.label->length() < rhs.label->length();
-                    }
-                )->label->length()
-            )) + 3, 
-            // +3 for menu label and border.
-            static_cast<int>(currTitleBarMenuContents.options.size() + 3)
-        };
-        
-        // Create the background of spaces.
-        ftxui::Elements titleBarMenuBackground {};
-        for (int bgRow {}; bgRow < currTitleBarMenuContentsWidthHeight[1]; ++bgRow) {
-            titleBarMenuBackground.push_back(ftxui::text(
-                std::string (currTitleBarMenuContentsWidthHeight[0], ' ')
-            ));
-        }
 
         // Render.        
         e_titleBarMenus.push_back(
             ftxui::vbox(
-                ftxui::hbox({
-                    e_titleBarMenuBuffer, 
-                    titleBarMenusShown[rTitleBarMenuIdx] 
-                    ? ftxui::dbox(
-                        ftxui::vbox(titleBarMenuBackground) 
-                            | ftxui::bgcolor(ftxui::Color::Default), 
-                        e_titleBarMenu
-                    )
-                    : e_titleBarMenu
-                }), 
+                ftxui::hbox(e_titleBarMenuBuffer, e_titleBarMenu | ftxui::clear_under), 
                 ftxui::filler()
             )
         );
@@ -738,13 +722,16 @@ static void createPaneBoxes(
             e2.focused = e2.focused && titleBarMenusHidden;
             ftxui::Element elem {ftxui::CheckboxOption::Simple().transform(e2)};
             if ((e.focused && titleBarMenusHidden) || e.state) {
-                return ftxui::hbox({
+                return ftxui::hbox(
                     elem, 
                     ftxui::text(showUUIDs ? " " + uuids::to_string(p_data->uuid) : "")
-                }) | ftxui::bgcolor(ftxui::Color::GrayDark);
+                ) | ftxui::bgcolor(ftxui::Color::GrayDark);
             }
             return elem;
         };
+        
+        // Ensure that the UI matches saved selected boxes.
+        p_dataBoxStates[dataBoxIdx] = selectedDataUUIDS.count(p_data->uuid);
         
         // The library developer forgot to implement a constructor, 
         // so this is a workaround.

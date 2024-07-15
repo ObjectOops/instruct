@@ -7,7 +7,7 @@
 namespace instruct::setup {
     struct SetupError {
         std::error_code errCode;
-        std::string msg, exMsg;
+        std::string exType, exMsg, msg;
     };
 
     SetupError &getSetupError();
