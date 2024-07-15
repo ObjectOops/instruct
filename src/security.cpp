@@ -52,6 +52,8 @@ bool sec::createInstance() {
         worker.detach();
     } catch (const std::exception &e) {
         LOG_F(ERROR, "Failed to create instance. Exception: %s", e.what());
+        LOG_F(ERROR, typeid(e).name());
+        LOG_F(ERROR, e.what());
         return false;
     }
     return true;

@@ -26,17 +26,17 @@ namespace instruct {
 
 bool ui::initAllHandled() {
     try {
-        instruct::Data::initAll();
+        Data::initAll();
     } catch (const std::exception &e) {
         try {
             std::filesystem::rename(
-                instruct::constants::DATA_DIR, 
-                std::string {instruct::constants::DATA_DIR} + "_copy"
+                constants::DATA_DIR, 
+                std::string {constants::DATA_DIR} + "_copy"
             );
             std::string msg {R"(Possible data corruption detected.
 To avoid a loss of information, restart the instruct setup.
 Then, manually resolve your data from `)" 
-+ std::string {instruct::constants::DATA_DIR} + R"(_copy`.
++ std::string {constants::DATA_DIR} + R"(_copy`.
 See the log file for more details.)"};
             LOG_F(ERROR, msg.c_str());
             LOG_F(ERROR, typeid(e).name());
@@ -44,7 +44,7 @@ See the log file for more details.)"};
             std::cerr << msg << '\n';
         } catch (const std::exception &e2) {
             std::string msg {R"(Possible data corruption detected.
-To avoid a loss of information, backup `)" + std::string {instruct::constants::DATA_DIR} 
+To avoid a loss of information, backup `)" + std::string {constants::DATA_DIR} 
 + R"(` and restart the instruct setup.
 Then, manually resolve your data from the backup.
 See the log file for more details.)"};
@@ -60,13 +60,14 @@ See the log file for more details.)"};
 
 bool ui::saveAllHandled() {
     try {
-        instruct::Data::saveAll();
+        Data::saveAll();
     } catch (const std::exception &e) {
         std::string msg {R"(Some of your data failed to save.
 Please manually resolve your data from `)" 
-+ std::string {instruct::constants::DATA_DIR} + R"(`.
++ std::string {constants::DATA_DIR} + R"(`.
 See the log file for more details.)"};
         LOG_F(ERROR, msg.c_str());
+        LOG_F(ERROR, typeid(e).name());
         LOG_F(ERROR, e.what());
         std::cerr << msg << '\n';
         return false;
@@ -110,11 +111,11 @@ std::tuple<bool, int> ui::setupMenu() {
     promptOptions.password = true;
     promptOptions.multiline = false;
     promptOptions.on_enter = continueSetup;
-    promptOptions.transform = instruct::constants::INPUT_TRANSFORM_CUSTOM;
+    promptOptions.transform = constants::INPUT_TRANSFORM_CUSTOM;
     ftxui::Component instructPswdPrompt {ftxui::Input(promptOptions)};
     instructPswdPrompt |= ftxui::CatchEvent([&] (ftxui::Event event) {
         return event.is_character() 
-            && instructPswd.length() > instruct::constants::MAX_INSTRUCTOR_PASSWORD_LENGTH;
+            && instructPswd.length() > constants::MAX_INSTRUCTOR_PASSWORD_LENGTH;
     });
 
     ftxui::Component confirmButton {ftxui::Button(
@@ -168,7 +169,7 @@ std::tuple<bool, int> ui::setupMenu() {
 }
 
 static bool instructSetup(const std::string &instructPswd) {
-    instruct::term::enableAlternateScreenBuffer();
+    term::enableAlternateScreenBuffer();
     
     auto nestedSetupScreen {ftxui::Screen::Create(ftxui::Dimension::Full())};
 
@@ -190,7 +191,7 @@ static bool instructSetup(const std::string &instructPswd) {
     }};
     auto handleStep {[&] (bool stepSuccess) {
         if (!stepSuccess) {
-            const instruct::setup::SetupError &setupError {instruct::setup::getSetupError()};
+            const setup::SetupError &setupError {setup::getSetupError()};
             std::string setupErrorStr {
                 "An error occurred: " 
                 + (setupError.errCode.value() != 0 
@@ -204,9 +205,9 @@ static bool instructSetup(const std::string &instructPswd) {
                     : " | No exception.")
                 + " | Message: " + setupError.msg
             };
-            instruct::term::disableAlternateScreenBuffer();
+            term::disableAlternateScreenBuffer();
             std::cerr << setupErrorStr << '\n';
-            instruct::term::enableAlternateScreenBuffer();
+            term::enableAlternateScreenBuffer();
             displayProgress(setupErrorStr, true);
             displayProgress("Press [Enter] to exit.");
             std::cin.get();
@@ -216,33 +217,33 @@ static bool instructSetup(const std::string &instructPswd) {
     }};
     auto setupFail {[&] {
         displayProgress("Deleting data directory.");
-        instruct::setup::deleteDataDir();
+        setup::deleteDataDir();
     }};
     
     displayProgress(
-        "Creating data directory `" + std::string {instruct::constants::DATA_DIR} + "`."
+        "Creating data directory `" + std::string {constants::DATA_DIR} + "`."
     );
-    if (!handleStep(instruct::setup::createDataDir())) {
+    if (!handleStep(setup::createDataDir())) {
         return false;
     }
     
     displayProgress("Populating data directory.");
-    if (!handleStep(instruct::setup::populateDataDir())) {
+    if (!handleStep(setup::populateDataDir())) {
         setupFail();
         return false;
     }
     
-    instruct::Data::initEmpty();
+    Data::initEmpty();
     
     displayProgress("Setting defaults.");
-    if (!handleStep(instruct::setup::setDefaults())) {
+    if (!handleStep(setup::setDefaults())) {
         setupFail();
         return false;
     }
     
     displayProgress("Setting instructor password: " 
         + instructPswd + " length " + std::to_string(instructPswd.length()));
-    if (!handleStep(instruct::sec::updateInstructPswd(instructPswd))) {
+    if (!handleStep(sec::updateInstructPswd(instructPswd))) {
         setupFail();
         return false;
     }
@@ -250,7 +251,7 @@ static bool instructSetup(const std::string &instructPswd) {
     displayProgress("Press [Enter] to complete set up.");
     std::cin.get();
     
-    instruct::term::disableAlternateScreenBuffer();
+    term::disableAlternateScreenBuffer();
     return true;
 }
 
@@ -292,13 +293,14 @@ static void createPaneBoxes(
 bool ui::mainMenu() {
     auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
     
-    if (instruct::IData::instructorData->get_firstTime()) {
-        instruct::notif::setNotification(R"(Welcome to instruct.
+    if (IData::instructorData->get_firstTime()) {
+        notif::setNotification(R"(Welcome to instruct.
 
 Before you begin, you'll need to select a verison of OpenVsCode Server to install.
 Afterwards, you can import your list of students.
 
 This message will only show once.)");
+        IData::instructorData->set_firstTime(false);
     }
 
     // These are button labels which need to change dynamically.
@@ -400,7 +402,7 @@ This message will only show once.)");
                     ? ftxui::text("Systems Operational") | ftxui::borderLight 
                     : ftxui::text("Problems Encountered: " + std::to_string(problemCount)) 
                         | ftxui::borderLight | ftxui::color(ftxui::Color::Red)), 
-                ftxui::text(instruct::constants::INSTRUCT_VERSION) | ftxui::borderLight
+                ftxui::text(constants::INSTRUCT_VERSION) | ftxui::borderLight
             );
         })};
     } titleBarStatus;
@@ -408,8 +410,11 @@ This message will only show once.)");
     // Buttons on the right-most side of the title bar.
     ftxui::Component notificationsButton {ftxui::Button("◆", [] {
     }, ftxui::ButtonOption::Animated(ftxui::Color::Black, ftxui::Color::GreenYellow))};
-    ftxui::Component settingsButton {ftxui::Button("Settings", [] {
-    }, ftxui::ButtonOption::Ascii())};
+
+    bool settingsModalShown {false};
+    ftxui::Component settingsButton {ftxui::Button(
+        "Settings", [&] {settingsModalShown = true;}, ftxui::ButtonOption::Ascii()
+    )};
     
     bool exitModalShown {false};
     ftxui::Component exitButton {ftxui::Button(
@@ -541,18 +546,6 @@ This message will only show once.)");
     // Parent container for all components.
     ftxui::Component mainScreen {ftxui::Container::Vertical({titleBar, mainPanes})};
     
-    ftxui::Component app {ftxui::Renderer(
-        mainScreen, 
-        [&] {
-        return ftxui::dbox(
-            ftxui::vbox( // 3 --> height of title bar.
-                ftxui::emptyElement() | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, 3), 
-                mainPanes->Render() | ftxui::flex
-            ), 
-            titleBar->Render()
-        );
-    })};
-    
     // Modals (exit confirmation, settings, notifications, title bar and pane functions, etc.).
     
     // Exit modal.
@@ -584,7 +577,19 @@ This message will only show once.)");
             }
         );
     }()};
-        
+    
+    ftxui::Component app {ftxui::Renderer(
+        mainScreen, 
+        [&] {
+        return ftxui::dbox(
+            ftxui::vbox( // 3 --> height of title bar.
+                ftxui::emptyElement() | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, 3), 
+                mainPanes->Render() | ftxui::flex
+            ), 
+            titleBar->Render()
+        );
+    })};
+    
     app |= ftxui::Modal(exitModal, &exitModalShown);
 
     appScreen.Loop(app);

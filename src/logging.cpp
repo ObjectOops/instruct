@@ -17,14 +17,14 @@ void log::configureLogging(int argc, char **argv) {
     // loguru::init(argc, argv);
     
     loguru::add_file(
-        instruct::constants::INSTRUCT_LOG_DIR.c_str(), 
+        constants::INSTRUCT_LOG_DIR.c_str(), 
         loguru::Truncate, 
         argc == 2 && argv[1] == "-v"s ? loguru::Verbosity_MAX : loguru::Verbosity_INFO
     );
 }
 
 void log::logVersion() {
-    LOG_F(INFO, "Instruct Version: %s", instruct::constants::INSTRUCT_VERSION.c_str());
+    LOG_F(INFO, "Instruct Version: %s", constants::INSTRUCT_VERSION.c_str());
 }
 
 }
