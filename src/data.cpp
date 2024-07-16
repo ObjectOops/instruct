@@ -79,7 +79,7 @@ void Data::initAll() {
     LOG_S(1) << "Tests config data: \n" << TData::testsData->yaml;
     
     UData::uiData = std::make_unique<UData>(constants::UI_CONFIG);
-    LOG_S(1) << "UI config data: " << UData::uiData->yaml;
+    LOG_S(1) << "UI config data: \n" << UData::uiData->yaml;
 }
 
 void Data::saveAll() {

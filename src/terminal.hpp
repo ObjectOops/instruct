@@ -11,6 +11,10 @@ namespace instruct::term {
     inline void disableAlternateScreenBuffer() {
         std::cout << "\033[?1049l";
     }
+    
+    inline void forceCursorRow(int row) {
+        std::cout << "\033[" + std::to_string(row) + ";H";
+    }
 }
 
 #endif

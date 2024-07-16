@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <string>
+#include <chrono>
 
 #include "ftxui/component/component_options.hpp"
 
@@ -38,6 +39,9 @@ namespace instruct::constants {
         }
         return state.element;
     }};
+    
+    inline const int ASYNC_DISPLAY_SPINNER_TYPE {15};
+    inline const std::chrono::milliseconds ASYNC_DISPLAY_SPINNER_INTERVAL {64};
 }
 
 #endif

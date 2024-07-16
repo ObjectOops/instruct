@@ -44,13 +44,7 @@ int main(int argc, char **argv) {
         LOG_F(INFO, "Exiting.");
         return EXIT_FAILURE;
     }
-    
-    LOG_F(INFO, "Finalizing save data.");
-    if (!instruct::ui::saveAllHandled()) {
-        LOG_F(INFO, "Exiting.");
-        return EXIT_FAILURE;
-    }
-    
+        
     LOG_F(INFO, "Exiting main application.");
     
     return EXIT_SUCCESS;

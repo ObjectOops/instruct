@@ -7,6 +7,8 @@
 #include <typeinfo>
 #include <vector>
 #include <memory>
+#include <atomic>
+#include <thread>
 
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/component/component.hpp"
@@ -24,9 +26,19 @@
 
 namespace instruct {
 
+static std::thread asyncDisplaySpinner(const std::string &, std::atomic_bool &);
+
 bool ui::initAllHandled() {
     try {
+        term::enableAlternateScreenBuffer();
+        std::atomic_bool spin {true};
+        std::thread spinnerThread {asyncDisplaySpinner("Loading...", spin)};
+
         Data::initAll();
+
+        spin = false;
+        spinnerThread.join();
+        term::disableAlternateScreenBuffer();
     } catch (const std::exception &e) {
         try {
             std::filesystem::rename(
@@ -292,6 +304,7 @@ static void createPaneBoxes(
 // This is a very large function. The main UI does a lot of things.
 bool ui::mainMenu() {
     auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
+    bool exitState {true};
     
     if (IData::instructorData->get_firstTime()) {
         notif::setNotification(R"(Welcome to instruct.
@@ -552,9 +565,19 @@ This message will only show once.)");
     ftxui::Component exitNegative {ftxui::Button(
         "No", [&] {exitModalShown = false;}, ftxui::ButtonOption::Ascii()
     )};
-    ftxui::Component exitAffirmative {ftxui::Button(
-        "Yes", appScreen.ExitLoopClosure(), ftxui::ButtonOption::Ascii()
-    )};
+    ftxui::Component exitAffirmative {ftxui::Button("Yes", [&] {
+        // Save remaining data if it wasn't already.
+        // This includes information such as the selected tests and some UI settings.
+        std::atomic_bool spin {true};
+        std::thread spinnerThread {asyncDisplaySpinner("Saving all data...", spin)};
+
+        LOG_F(INFO, "Finalizing save data.");
+        exitState = instruct::ui::saveAllHandled();
+        
+        spin = false;
+        spinnerThread.join();
+        appScreen.Exit();
+    }, ftxui::ButtonOption::Ascii())};
     ftxui::Component exitModal {[&] {
         return ftxui::Renderer(
             ftxui::Container::Horizontal({exitNegative, exitAffirmative}), 
@@ -593,10 +616,34 @@ This message will only show once.)");
     app |= ftxui::Modal(exitModal, &exitModalShown);
 
     appScreen.Loop(app);
+
+    return exitState;
     // Also reset appScreen cursor manually.
     // Escape also brings up exit menu.
-    
-    return true;
+}
+
+static std::thread asyncDisplaySpinner(const std::string &msg, std::atomic_bool &spin) {
+    // Make a copy first to avoid a race condition.
+    std::string msgCopy {msg};
+    return std::thread {[msgCopy, &spin] {
+        DLOG_F(INFO, "Spinner thread started.");
+        auto spinnerScreen {ftxui::Screen::Create({ftxui::Terminal::Size().dimx, 1})};
+        unsigned long long step {};
+        while (spin) {
+            ftxui::Element spinner {ftxui::hbox(
+                ftxui::spinner(constants::ASYNC_DISPLAY_SPINNER_TYPE, step) 
+                    | ftxui::color(ftxui::Color::Gold1), 
+                ftxui::separator(), 
+                ftxui::text(msgCopy)
+            )};
+            ftxui::Render(spinnerScreen, spinner);
+            term::forceCursorRow(ftxui::Terminal::Size().dimy);
+            spinnerScreen.Print();
+            std::this_thread::sleep_for(constants::ASYNC_DISPLAY_SPINNER_INTERVAL);
+            ++step;
+        }
+        DLOG_F(INFO, "Spinner thread stopped.");
+    }};
 }
 
 static void createTitleBarMenus(
