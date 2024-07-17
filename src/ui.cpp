@@ -9,6 +9,7 @@
 #include <memory>
 #include <atomic>
 #include <thread>
+#include <cctype>
 
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/component/component.hpp"
@@ -91,6 +92,7 @@ void ui::print(const std::string &s) {
     std::cout << s;
 }
 
+static ftxui::Element inputTransformCustom(ftxui::InputState);
 static bool instructSetup(const std::string &);
 
 std::tuple<bool, int> ui::setupMenu() {
@@ -123,7 +125,10 @@ std::tuple<bool, int> ui::setupMenu() {
     promptOptions.password = true;
     promptOptions.multiline = false;
     promptOptions.on_enter = continueSetup;
-    promptOptions.transform = constants::INPUT_TRANSFORM_CUSTOM;
+    promptOptions.transform = [] (ftxui::InputState state) {
+        ftxui::Element elem {inputTransformCustom(state)};
+        return elem |= ftxui::hcenter;
+    };
     ftxui::Component instructPswdPrompt {ftxui::Input(promptOptions)};
     instructPswdPrompt |= ftxui::CatchEvent([&] (ftxui::Event event) {
         return event.is_character() 
@@ -601,6 +606,245 @@ This message will only show once.)");
         );
     }()};
     
+    // Settings modal.
+    auto onlyDigits {[] (ftxui::Event event) {
+        return event.is_character() && !std::isdigit(event.character()[0]);
+    }};
+    auto makeInput {[] (
+        std::string &content, std::string placeholder, ftxui::Closure on_enter = {}
+    ) {
+        ftxui::InputOption inputOptions;
+        inputOptions.content = &content;
+        inputOptions.multiline = false;
+        inputOptions.on_enter = on_enter;
+        inputOptions.placeholder = placeholder;
+        inputOptions.transform = inputTransformCustom;
+        return ftxui::Input(inputOptions);
+    }};
+    std::vector<std::string> onOffToggle {"Off", "On"};
+    auto makeOnOffToggle([] (std::vector<std::string> &toggles, int &selection) {
+        return ftxui::Toggle(&toggles, &selection);
+    });
+    
+    // Instructor settings for host and port config.
+    std::string iAuthHostContent;
+    ftxui::Component iAuthHostInput {makeInput(iAuthHostContent, "i.e. 0.0.0.0")};
+    std::string iAuthPortContent;
+    ftxui::Component iAuthPortInput {makeInput(iAuthPortContent, "i.e. 8000")};
+    iAuthPortInput |= ftxui::CatchEvent(onlyDigits);
+    std::string iCodePortContent;
+    ftxui::Component iCodePortInput {makeInput(iCodePortContent, "i.e. 3000")};
+    iCodePortInput |= ftxui::CatchEvent(onlyDigits);
+
+    // Student settings for host and port config.
+    std::string sAuthHostContent;
+    ftxui::Component sAuthHostInput {makeInput(sAuthHostContent, "i.e. 0.0.0.0")};
+    std::string sAuthPortContent;
+    ftxui::Component sAuthPortInput {makeInput(sAuthPortContent, "i.e. 8001")};
+    sAuthPortInput |= ftxui::CatchEvent(onlyDigits);
+    
+    ftxui::MenuOption sCodePortMenuOptions {ftxui::MenuOption::VerticalAnimated()};
+    std::vector<std::string> sCodePortVec {};
+    sCodePortMenuOptions.entries = &sCodePortVec;
+    ftxui::Closure sAddCodePort {}, sRemoveCodePort {};
+    std::string sCodePortContent {};
+    ftxui::Component sCodePortInput {makeInput(sCodePortContent, "Add a port.", sAddCodePort)};
+    sCodePortInput |= ftxui::CatchEvent(onlyDigits);
+    sAddCodePort = [&] {
+        if (std::count(sCodePortVec.begin(), sCodePortVec.end(), sCodePortContent) == 0) {
+            sCodePortVec.push_back(sCodePortContent);
+            std::sort(sCodePortVec.begin(), sCodePortVec.end());
+            sCodePortContent.clear();
+        } else {
+            notif::setNotification("Port already present.");
+        }
+    };
+    sRemoveCodePort = [&] {
+        sCodePortVec.erase(sCodePortVec.begin() + *sCodePortMenuOptions.selected);
+    };
+    ftxui::Component sAddCodePortButton {ftxui::Button(
+        "Add Code Port", sAddCodePort, ftxui::ButtonOption::Ascii()
+    )};
+    ftxui::Component sRemoveCodePortButton {ftxui::Button(
+        "Remove Code Port", sRemoveCodePort, ftxui::ButtonOption::Ascii()
+    )};
+    ftxui::Component sCodePortMenu {ftxui::Menu(sCodePortMenuOptions)};
+    
+    std::pair<std::string, std::string> sCodePortRangeContent;
+    ftxui::Component sCodePortRangeInput_lb {
+        makeInput(sCodePortRangeContent.first, "lower bound inclusive (i.e. 3001)")
+    };
+    sCodePortRangeInput_lb |= ftxui::CatchEvent(onlyDigits);
+    ftxui::Component sCodePortRangeInput_ub {
+        makeInput(sCodePortRangeContent.second, "i.e. 4000")
+    };
+    sCodePortRangeInput_ub |= ftxui::CatchEvent(onlyDigits);
+    
+    int sUseRandomPortsSelection;
+    ftxui::Component sUseRandomPortsToggle {
+        makeOnOffToggle(onOffToggle, sUseRandomPortsSelection)
+    };
+    
+    // Instruct UI settings.
+    int alwaysShowStudentUUIDsSelection;
+    ftxui::Component alwaysShowStudentUUIDsToggle {
+        makeOnOffToggle(onOffToggle, alwaysShowStudentUUIDsSelection)
+    };
+    int alwaysShowTestUUIDsSelection;
+    ftxui::Component alwaysShowTestUUIDsToggle {
+        makeOnOffToggle(onOffToggle, alwaysShowTestUUIDsSelection)
+    };
+    
+    auto resetValues {[&] {
+        iAuthHostContent = IData::instructorData->get_authHost();
+        iAuthPortContent = std::to_string(IData::instructorData->get_authPort());
+        iCodePortContent = std::to_string(IData::instructorData->get_codePort());
+        
+        sAuthHostContent = SData::studentsData->get_authHost();
+        sAuthPortContent = std::to_string(SData::studentsData->get_authPort());
+        
+        const auto &sCodePortSet {SData::studentsData->get_codePorts()};
+        for (int codePort : sCodePortSet) {
+            sCodePortVec.push_back(std::to_string(codePort));
+        }
+        std::sort(sCodePortVec.begin(), sCodePortVec.end());
+        
+        sCodePortRangeContent.first = 
+            std::to_string(SData::studentsData->get_codePortRange().first);
+        sCodePortRangeContent.second = 
+            std::to_string(SData::studentsData->get_codePortRange().second);
+        
+        sUseRandomPortsSelection = SData::studentsData->get_useRandomPorts();
+
+        alwaysShowStudentUUIDsSelection = UData::uiData->get_alwaysShowStudentUUIDs();
+        alwaysShowTestUUIDsSelection = UData::uiData->get_alwaysShowTestUUIDs();
+    }};
+    resetValues();
+    
+    ftxui::Component settingsCancelChangesButton {ftxui::Button("Cancel Changes", [&] {
+        resetValues();
+        settingsModalShown = false;
+    }, ftxui::ButtonOption::Ascii())};
+    ftxui::Component settingsSaveChangesButton {ftxui::Button("Save Changes", [&] {
+        std::atomic_bool spin {true};
+        std::thread spinnerThread {asyncDisplaySpinner("Saving changes...", spin)};
+
+        IData::instructorData->set_authHost(iAuthHostContent);
+        IData::instructorData->set_authPort(std::stoi(iAuthPortContent));
+        IData::instructorData->set_codePort(std::stoi(iCodePortContent));
+        
+        SData::studentsData->set_authHost(sAuthHostContent);
+        SData::studentsData->set_authPort(std::stoi(sAuthPortContent));
+
+        std::set<int> sCodePortSet {};
+        for (std::string &codePort : sCodePortVec) {
+            sCodePortSet.insert(std::stoi(codePort));
+        }
+        SData::studentsData->set_codePorts(sCodePortSet);
+        
+        std::pair<int, int> i_sCodePortRangeContent {
+            std::stoi(sCodePortRangeContent.first), std::stoi(sCodePortRangeContent.second)
+        };
+        SData::studentsData->set_codePortRange(i_sCodePortRangeContent);
+        
+        SData::studentsData->set_useRandomPorts(sUseRandomPortsSelection);
+        
+        UData::uiData->set_alwaysShowStudentUUIDs(alwaysShowStudentUUIDsSelection);
+        UData::uiData->set_alwaysShowTestUUIDs(alwaysShowTestUUIDsSelection);
+        
+        resetValues();
+
+        spin = false;
+        spinnerThread.join();
+    }, ftxui::ButtonOption::Ascii())};
+
+    auto inputLine {[] (std::string label, ftxui::Component &component) {
+        return ftxui::hbox(ftxui::text(label), component->Render());
+    }};
+    ftxui::Component settingsModal {[&] {
+        return ftxui::Renderer(
+            ftxui::Container::Vertical({
+                iAuthHostInput, 
+                iAuthPortInput, 
+                iCodePortInput, 
+                sAuthHostInput, 
+                sAuthPortInput, 
+                sCodePortInput, 
+                ftxui::Container::Horizontal({
+                    sAddCodePortButton, 
+                    sRemoveCodePortButton
+                }), 
+                sCodePortMenu, 
+                ftxui::Container::Horizontal({
+                    sCodePortRangeInput_lb, 
+                    sCodePortRangeInput_ub
+                }), 
+                sUseRandomPortsToggle, 
+                alwaysShowStudentUUIDsToggle, 
+                alwaysShowTestUUIDsToggle, 
+                settingsCancelChangesButton, 
+                settingsSaveChangesButton
+            }), 
+            [&] {
+                return ftxui::vbox(
+                    ftxui::vbox(
+                        ftxui::text("Instructor Settings") | ftxui::bold | ftxui::underlined, 
+                        inputLine("Instruct Host: ", iAuthHostInput), 
+                        inputLine("Instruct Port: ", iAuthPortInput), 
+                        inputLine("Code Port: ", iCodePortInput), 
+                        ftxui::text("Student Settings") | ftxui::bold | ftxui::underlined, 
+                        inputLine("Instruct Host: ", sAuthHostInput), 
+                        inputLine("Instruct Port: ", sAuthPortInput), 
+                        ftxui::text("Code Port: "), 
+                        sCodePortInput->Render(), 
+                        ftxui::hbox(
+                            sAddCodePortButton 
+                                | ftxui::hcenter 
+                                | ftxui::border 
+                                | ftxui::color(ftxui::Color::GreenYellow), 
+                            sRemoveCodePortButton 
+                                | ftxui::hcenter 
+                                | ftxui::border 
+                                | ftxui::color(ftxui::Color::Red)
+                        ), 
+                        sCodePortMenu->Render() 
+                            | ftxui::vscroll_indicator 
+                            | ftxui::yframe 
+                            | ftxui::border, 
+                        ftxui::text("Code Port Range: "), 
+                        ftxui::hbox(
+                            sCodePortRangeInput_lb->Render(), 
+                            ftxui::text(" to "), 
+                            sCodePortRangeInput_ub->Render()
+                        ), 
+                        inputLine("Use Random Ports: ", sUseRandomPortsToggle), 
+                        ftxui::text("UI Settings") | ftxui::bold | ftxui::underlined, 
+                        inputLine("Always Show Student UUIDs: ", alwaysShowStudentUUIDsToggle), 
+                        inputLine("Always Show Test UUIDs: ", alwaysShowTestUUIDsToggle)
+                    ) 
+                        | ftxui::vscroll_indicator 
+                        | ftxui::yframe, 
+                    ftxui::separator(), 
+                    ftxui::hbox(
+                        settingsCancelChangesButton 
+                            | ftxui::hcenter 
+                            | ftxui::border 
+                            | ftxui::color(ftxui::Color::Red), 
+                        settingsSaveChangesButton 
+                            | ftxui::hcenter 
+                            | ftxui::border 
+                            | ftxui::color(ftxui::Color::GreenYellow)
+                    )
+                )
+                    | ftxui::size(ftxui::WIDTH, ftxui::GREATER_THAN, 40) 
+                    | ftxui::size(
+                        ftxui::HEIGHT, ftxui::GREATER_THAN, ftxui::Terminal::Size().dimy * 0.75
+                    ) 
+                    | ftxui::border;
+            }
+        );
+    }()};
+    
     ftxui::Component app {ftxui::Renderer(
         mainScreen, 
         [&] {
@@ -614,6 +858,7 @@ This message will only show once.)");
     })};
     
     app |= ftxui::Modal(exitModal, &exitModalShown);
+    app |= ftxui::Modal(settingsModal, &settingsModalShown);
 
     appScreen.Loop(app);
 
@@ -635,7 +880,7 @@ static std::thread asyncDisplaySpinner(const std::string &msg, std::atomic_bool 
                     | ftxui::color(ftxui::Color::Gold1), 
                 ftxui::separator(), 
                 ftxui::text(msgCopy)
-            )};
+            ) | ftxui::bgcolor(ftxui::Color::DarkRed)};
             ftxui::Render(spinnerScreen, spinner);
             term::forceCursorRow(ftxui::Terminal::Size().dimy);
             spinnerScreen.Print();
@@ -644,6 +889,17 @@ static std::thread asyncDisplaySpinner(const std::string &msg, std::atomic_bool 
         }
         DLOG_F(INFO, "Spinner thread stopped.");
     }};
+}
+
+static ftxui::Element inputTransformCustom(ftxui::InputState state) {
+    state.element |= ftxui::color(ftxui::Color::White);
+    if (state.is_placeholder) {
+        state.element |= ftxui::dim;
+    }
+    if (!state.focused && state.hovered) {
+        state.element |= ftxui::bgcolor(ftxui::Color::GrayDark);
+    }
+    return state.element;
 }
 
 static void createTitleBarMenus(
@@ -775,7 +1031,7 @@ static void createPaneBoxes(
                 // Suppress the student box's changed state.
                 p_dataBoxStates[dataBoxIdx] = !p_dataBoxStates[dataBoxIdx];
             } else if (p_dataBoxStates[dataBoxIdx]) {
-                selectedDataUUIDS.emplace(p_data->uuid);
+                selectedDataUUIDS.insert(p_data->uuid);
             } else {
                 selectedDataUUIDS.erase(p_data->uuid);
             }

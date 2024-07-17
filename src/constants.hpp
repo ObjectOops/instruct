@@ -27,19 +27,7 @@ namespace instruct::constants {
     inline constexpr int MAX_INSTRUCTOR_PASSWORD_LENGTH = 16;
     
     inline const std::string OPENVSCODE_SERVER_VERSION_DEFAULT {"v1.79.2"};
-    
-    inline const auto INPUT_TRANSFORM_CUSTOM {[] (ftxui::InputState state) {
-        state.element |= ftxui::color(ftxui::Color::White);
-        state.element |= ftxui::hcenter;
-        if (state.is_placeholder) {
-            state.element |= ftxui::dim;
-        }
-        if (!state.focused && state.hovered) {
-            state.element |= ftxui::bgcolor(ftxui::Color::GrayDark);
-        }
-        return state.element;
-    }};
-    
+        
     inline const int ASYNC_DISPLAY_SPINNER_TYPE {15};
     inline const std::chrono::milliseconds ASYNC_DISPLAY_SPINNER_INTERVAL {64};
 }
