@@ -314,12 +314,11 @@ bool ui::mainMenu() {
     bool exitState {true};
     
     if (IData::instructorData->get_firstTime()) {
-        notif::setNotification(R"(Welcome to instruct.
-
-Before you begin, you'll need to select a verison of OpenVsCode Server to install.
-Afterwards, you can import your list of students.
-
-This message will only show once.)");
+        notif::setNotification(
+            "Please select a version of OpenVsCode Server to install. "
+            "Then, import a list of students. "
+            "This message will only show once."
+        );
         IData::instructorData->set_firstTime(false);
     }
 
@@ -664,7 +663,7 @@ This message will only show once.)");
             sCodePortContent.clear();
             sCodePortInput->TakeFocus();
         } else {
-            notif::setNotification("Port already present.");
+            notif::setNotification("Port " + sCodePortContent + " already present.");
         }
     }};
     ftxui::Closure sRemoveCodePort {[&] {
@@ -884,49 +883,72 @@ This message will only show once.)");
     )};
     
     // Notifications modal.
-    // ftxui::Component closeNotifButton {ftxui::Button(
-    //     "Close", notif::ackNotice, ftxui::ButtonOption::Ascii()
-    // )};
-    // ftxui::Component notifModal {[&] {
-    //     return ftxui::Renderer(
-    //         closeNotifButton, 
-    //         [&] {
-    //             return ftxui::vbox(
-    //                 ftxui::paragraph(notif::getNotification()), 
-    //                 ftxui::separator(), 
-    //                 closeNotifButton->Render()
-    //             );
-    //         }
-    //     );
-    // }()};
+    ftxui::Component closeNotifButton {ftxui::Button(
+        "Close", notif::ackNotice, ftxui::ButtonOption::Ascii()
+    )};
+    ftxui::Component notifModal {ftxui::Renderer(
+        closeNotifButton, 
+        [&] {
+            return ftxui::vbox(
+                ftxui::paragraph(notif::getNotification()), 
+                ftxui::separator(), 
+                closeNotifButton->Render() 
+                    | ftxui::hcenter 
+                    | ftxui::border 
+                    | ftxui::color(ftxui::Color::Blue)
+            ) 
+                | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, getDimensions().dimx * 0.75) 
+                | ftxui::border;
+        }
+    )};
     
-    // ftxui::Component closeRecentNotifsButton {ftxui::Button(
-    //     "Close", [&] {recentNotifsModalShown = false;}, ftxui::ButtonOption::Ascii()
-    // )};
-    // int recentNotifSelected {};
-    // ftxui::Component recentNotifsMenu {ftxui::Menu(
-    //     &notif::getRecentNotifications(), 
-    //     &recentNotifSelected, 
-    //     ftxui::MenuOption::VerticalAnimated()
-    // )};
-    // ftxui::Component recentNotifsModal {[] {
-    //     return 
-    // }()};
+    ftxui::Component closeRecentNotifsButton {ftxui::Button(
+        "Close", [&] {recentNotifsModalShown = false;}, ftxui::ButtonOption::Ascii()
+    )};
+    ftxui::MenuOption recentNotifsMenuOptions {ftxui::MenuOption::VerticalAnimated()};
+    recentNotifsMenuOptions.entries = &notif::getRecentNotifications();
+    recentNotifsMenuOptions.on_enter = notif::copyNotice;
+    ftxui::Component recentNotifsMenu {ftxui::Menu(recentNotifsMenuOptions)};
+    ftxui::Component recentNotifsModal {ftxui::Renderer(
+        ftxui::Container::Vertical({recentNotifsMenu, closeRecentNotifsButton}), 
+        [&] {
+            ftxui::Dimensions dims {getDimensions()};
+            return ftxui::vbox(
+                ftxui::text("Click on a notification and press [Enter] to view it."), 
+                ftxui::separator(), 
+                recentNotifsMenu->Render() 
+                    | ftxui::vscroll_indicator 
+                    | ftxui::yframe 
+                    | ftxui::flex, 
+                ftxui::separator(), 
+                closeRecentNotifsButton->Render() 
+                    | ftxui::hcenter 
+                    | ftxui::border 
+                    | ftxui::color(ftxui::Color::Blue)
+            ) 
+                | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, dims.dimx * 0.75) 
+                | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, dims.dimy * 0.75) 
+                | ftxui::border;
+        }
+    )};
     
     ftxui::Component app {ftxui::Renderer(
         mainScreen, 
         [&] {
-        return ftxui::dbox(
-            ftxui::vbox( // 3 --> height of title bar.
-                ftxui::emptyElement() | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, 3), 
-                mainPanes->Render() | ftxui::flex
-            ), 
-            titleBar->Render()
-        );
-    })};
+            return ftxui::dbox(
+                ftxui::vbox( // 3 --> height of title bar.
+                    ftxui::emptyElement() | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, 3), 
+                    mainPanes->Render() | ftxui::flex
+                ), 
+                titleBar->Render()
+            );
+        }
+    )};
     
     app |= ftxui::Modal(exitModal, &exitModalShown);
     app |= ftxui::Modal(settingsModal, &settingsModalShown);
+    app |= ftxui::Modal(recentNotifsModal, &recentNotifsModalShown);
+    app |= ftxui::Modal(notifModal, &notif::getNotice());
 
     appScreen.Loop(app);
 
