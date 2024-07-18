@@ -9,6 +9,7 @@
 
 #include "notification.hpp"
 #include "security.hpp"
+#include "logging.hpp"
 #include "setup.hpp"
 #include "data.hpp"
 
@@ -85,7 +86,7 @@ bool sec::updateInstructPswd(const std::string &instructPswd) {
             "Failed to save password. Your new password will only be used during this session."
         );
         
-        LOG_F(WARNING, "%s --> %s", typeid(e).name(), e.what());
+        log::logExceptionWarning(e);
         return false;
     }
     return true;

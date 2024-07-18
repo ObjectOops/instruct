@@ -21,6 +21,7 @@
 #include "constants.hpp"
 #include "terminal.hpp"
 #include "security.hpp"
+#include "logging.hpp"
 #include "setup.hpp"
 #include "data.hpp"
 #include "ui.hpp"
@@ -332,7 +333,7 @@ bool ui::mainMenu() {
             IData::instructorData->set_firstTime(false);
         } catch (const std::exception &e) {
             LOG_F(WARNING, "First time message will show multiple times.");
-            LOG_F(WARNING, "%s --> %s", typeid(e).name(), e.what());
+            log::logExceptionWarning(e);
         }
     }
 
@@ -781,7 +782,7 @@ bool ui::mainMenu() {
         } catch (const std::exception &e) {
             notif::notify("Failed to save all settings. Some settings may persist.");
             
-            LOG_F(WARNING, "%s --> %s", typeid(e).name(), e.what());
+            log::logExceptionWarning(e);
         }
         
         resetValues();

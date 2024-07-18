@@ -27,4 +27,8 @@ void log::logVersion() {
     LOG_F(INFO, "Instruct Version: %s", constants::INSTRUCT_VERSION.c_str());
 }
 
+void log::logExceptionWarning(const std::exception &e) {
+    LOG_F(WARNING, "%s --> %s", typeid(e).name(), e.what());
+}
+
 }
