@@ -428,7 +428,9 @@ This message will only show once.)");
     } titleBarStatus;
     
     // Buttons on the right-most side of the title bar.
-    ftxui::Component notificationsButton {ftxui::Button("◆", [] {
+    bool recentNotifsModalShown {false};
+    ftxui::Component notificationsButton {ftxui::Button("◆", [&] {
+        recentNotifsModalShown = true;
     }, ftxui::ButtonOption::Animated(ftxui::Color::Black, ftxui::Color::GreenYellow))};
 
     bool settingsModalShown {false};
@@ -587,30 +589,28 @@ This message will only show once.)");
         spinnerThread.join();
         appScreen.Exit();
     }, ftxui::ButtonOption::Ascii())};
-    ftxui::Component exitModal {[&] {
-        return ftxui::Renderer(
-            ftxui::Container::Horizontal({exitNegative, exitAffirmative}), 
-            [&] {
-                return ftxui::vbox(
-                    ftxui::text("Exit?") | ftxui::bold | ftxui::hcenter, 
-                    ftxui::hbox(
-                        exitNegative->Render() 
-                            | ftxui::hcenter 
-                            | ftxui::border 
-                            | ftxui::flex 
-                            | ftxui::color(ftxui::Color::Red),
-                        exitAffirmative->Render() 
-                            | ftxui::hcenter 
-                            | ftxui::border 
-                            | ftxui::flex 
-                            | ftxui::color(ftxui::Color::GreenYellow)
-                    )
-                ) 
-                    | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, getDimensions().dimx * 0.25) 
-                    | ftxui::border;
-            }
-        );
-    }()};
+    ftxui::Component exitModal {ftxui::Renderer(
+        ftxui::Container::Horizontal({exitNegative, exitAffirmative}), 
+        [&] {
+            return ftxui::vbox(
+                ftxui::text("Exit?") | ftxui::bold | ftxui::hcenter, 
+                ftxui::hbox(
+                    exitNegative->Render() 
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | ftxui::flex 
+                        | ftxui::color(ftxui::Color::Red),
+                    exitAffirmative->Render() 
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | ftxui::flex 
+                        | ftxui::color(ftxui::Color::GreenYellow)
+                )
+            ) 
+                | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, getDimensions().dimx * 0.25) 
+                | ftxui::border;
+        }
+    )};
     
     // Settings modal.
     auto onlyDigits {[] (ftxui::Event event) {
@@ -776,114 +776,142 @@ This message will only show once.)");
     }};
     int settingsScrollPosition {};
     ftxui::Component settingsContainer;
-    ftxui::Component settingsModal {[&] {
-        return ftxui::Renderer(
-            settingsContainer = ftxui::Container::Vertical({
-                iAuthHostInput, 
-                iAuthPortInput, 
-                iCodePortInput, 
-                sAuthHostInput, 
-                sAuthPortInput, 
-                sCodePortInput, 
-                ftxui::Container::Horizontal({
-                    sAddCodePortButton, 
-                    sRemoveCodePortButton
-                }), 
-                sCodePortMenu, 
-                ftxui::Container::Horizontal({
-                    sCodePortRangeInput_lb, 
-                    sCodePortRangeInput_ub
-                }), 
-                sUseRandomPortsToggle, 
-                alwaysShowStudentUUIDsToggle, 
-                alwaysShowTestUUIDsToggle, 
-                ftxui::Container::Horizontal({
-                    settingsCancelChangesButton, 
-                    settingsSaveChangesButton
-                })
-            }) | ftxui::CatchEvent([&] (ftxui::Event event) {
-                ftxui::Mouse mouse {event.mouse()};
-                if (event == ftxui::Event::ArrowUp 
-                    || mouse.button == ftxui::Mouse::Button::WheelUp
-                ) {
-                    settingsScrollPosition = std::max(1, settingsScrollPosition - 1);
-                    settingsSaveChangesButton->TakeFocus();
-                    return true;
-                }
-                if (event == ftxui::Event::ArrowDown 
-                    || mouse.button == ftxui::Mouse::Button::WheelDown
-                ) {
-                    // Dynamically approximate the total height encompassed 
-                    // by settings items.
-                    std::size_t items {settingsContainer->ChildAt(0)->ChildCount()};
-                    settingsScrollPosition = std::min(
-                        static_cast<int>(items * 2 + sCodePortVec.size()), 
-                        settingsScrollPosition + 1
-                    );
-                    settingsSaveChangesButton->TakeFocus();
-                    return true;
-                }
-                return false;
+    ftxui::Component settingsModal {ftxui::Renderer(
+        settingsContainer = ftxui::Container::Vertical({
+            iAuthHostInput, 
+            iAuthPortInput, 
+            iCodePortInput, 
+            sAuthHostInput, 
+            sAuthPortInput, 
+            sCodePortInput, 
+            ftxui::Container::Horizontal({
+                sAddCodePortButton, 
+                sRemoveCodePortButton
             }), 
-            [&] {
-                ftxui::Dimensions dims {getDimensions()};
-                return ftxui::vbox(
-                    ftxui::vbox(
-                        ftxui::text("Instructor Settings") | ftxui::bold | ftxui::underlined, 
-                        inputLine("Instruct Host: ", iAuthHostInput), 
-                        inputLine("Instruct Port: ", iAuthPortInput), 
-                        inputLine("Code Ports: ", iCodePortInput), 
-                        ftxui::separatorEmpty(), 
-                        ftxui::text("Student Settings") | ftxui::bold | ftxui::underlined, 
-                        inputLine("Instruct Host: ", sAuthHostInput), 
-                        inputLine("Instruct Port: ", sAuthPortInput), 
-                        ftxui::text("Code Port: "), 
-                        sCodePortInput->Render(), 
-                        ftxui::hbox(
-                            sAddCodePortButton->Render() 
-                                | ftxui::hcenter 
-                                | ftxui::border 
-                                | ftxui::color(ftxui::Color::GreenYellow), 
-                            sRemoveCodePortButton->Render() 
-                                | ftxui::hcenter 
-                                | ftxui::border 
-                                | ftxui::color(ftxui::Color::Red)
-                        ), 
-                        sCodePortMenu->Render() | ftxui::border, 
-                        ftxui::text("Code Port Range: "), 
-                        sCodePortRangeInput_lb->Render(), 
-                        ftxui::text(" to "), 
-                        sCodePortRangeInput_ub->Render(), 
-                        inputLine("Use Random Ports: ", sUseRandomPortsToggle), 
-                        ftxui::separatorEmpty(), 
-                        ftxui::text("UI Settings") | ftxui::bold | ftxui::underlined, 
-                        inputLine(
-                            "Always Show Student UUIDs: ", alwaysShowStudentUUIDsToggle
-                        ), 
-                        inputLine("Always Show Test UUIDs: ", alwaysShowTestUUIDsToggle)
-                    ) 
-                        | ftxui::focusPosition(1, settingsScrollPosition) 
-                        | ftxui::vscroll_indicator 
-                        | ftxui::yframe 
-                        | ftxui::flex_shrink, 
-                    ftxui::separator(), 
-                    ftxui::hbox(
-                        settingsCancelChangesButton->Render() 
-                            | ftxui::hcenter 
-                            | ftxui::border 
-                            | ftxui::color(ftxui::Color::Red), 
-                        settingsSaveChangesButton->Render() 
-                            | ftxui::hcenter 
-                            | ftxui::border 
-                            | ftxui::color(ftxui::Color::GreenYellow)
-                    )
-                )
-                    | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, dims.dimx * 0.75) 
-                    | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, dims.dimy * 0.75) 
-                    | ftxui::border;
+            sCodePortMenu, 
+            ftxui::Container::Horizontal({
+                sCodePortRangeInput_lb, 
+                sCodePortRangeInput_ub
+            }), 
+            sUseRandomPortsToggle, 
+            alwaysShowStudentUUIDsToggle, 
+            alwaysShowTestUUIDsToggle, 
+            ftxui::Container::Horizontal({
+                settingsCancelChangesButton, 
+                settingsSaveChangesButton
+            })
+        }) | ftxui::CatchEvent([&] (ftxui::Event event) {
+            ftxui::Mouse mouse {event.mouse()};
+            if (event == ftxui::Event::ArrowUp 
+                || mouse.button == ftxui::Mouse::Button::WheelUp
+            ) {
+                settingsScrollPosition = std::max(1, settingsScrollPosition - 1);
+                settingsSaveChangesButton->TakeFocus();
+                return true;
             }
-        );
-    }()};
+            if (event == ftxui::Event::ArrowDown 
+                || mouse.button == ftxui::Mouse::Button::WheelDown
+            ) {
+                // Dynamically approximate the total height encompassed 
+                // by settings items.
+                std::size_t items {settingsContainer->ChildAt(0)->ChildCount()};
+                settingsScrollPosition = std::min(
+                    static_cast<int>(items * 2 + sCodePortVec.size()), 
+                    settingsScrollPosition + 1
+                );
+                settingsSaveChangesButton->TakeFocus();
+                return true;
+            }
+            return false;
+        }), 
+        [&] {
+            ftxui::Dimensions dims {getDimensions()};
+            return ftxui::vbox(
+                ftxui::vbox(
+                    ftxui::text("Instructor Settings") | ftxui::bold | ftxui::underlined, 
+                    inputLine("Instruct Host: ", iAuthHostInput), 
+                    inputLine("Instruct Port: ", iAuthPortInput), 
+                    inputLine("Code Ports: ", iCodePortInput), 
+                    ftxui::separatorEmpty(), 
+                    ftxui::text("Student Settings") | ftxui::bold | ftxui::underlined, 
+                    inputLine("Instruct Host: ", sAuthHostInput), 
+                    inputLine("Instruct Port: ", sAuthPortInput), 
+                    ftxui::text("Code Port: "), 
+                    sCodePortInput->Render(), 
+                    ftxui::hbox(
+                        sAddCodePortButton->Render() 
+                            | ftxui::hcenter 
+                            | ftxui::border 
+                            | ftxui::color(ftxui::Color::GreenYellow), 
+                        sRemoveCodePortButton->Render() 
+                            | ftxui::hcenter 
+                            | ftxui::border 
+                            | ftxui::color(ftxui::Color::Red)
+                    ), 
+                    sCodePortMenu->Render() | ftxui::border, 
+                    ftxui::text("Code Port Range: "), 
+                    sCodePortRangeInput_lb->Render(), 
+                    ftxui::text(" to "), 
+                    sCodePortRangeInput_ub->Render(), 
+                    inputLine("Use Random Ports: ", sUseRandomPortsToggle), 
+                    ftxui::separatorEmpty(), 
+                    ftxui::text("UI Settings") | ftxui::bold | ftxui::underlined, 
+                    inputLine(
+                        "Always Show Student UUIDs: ", alwaysShowStudentUUIDsToggle
+                    ), 
+                    inputLine("Always Show Test UUIDs: ", alwaysShowTestUUIDsToggle)
+                ) 
+                    | ftxui::focusPosition(1, settingsScrollPosition) 
+                    | ftxui::vscroll_indicator 
+                    | ftxui::yframe 
+                    | ftxui::flex_shrink, 
+                ftxui::separator(), 
+                ftxui::hbox(
+                    settingsCancelChangesButton->Render() 
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | ftxui::color(ftxui::Color::Red), 
+                    settingsSaveChangesButton->Render() 
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | ftxui::color(ftxui::Color::GreenYellow)
+                )
+            )
+                | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, dims.dimx * 0.75) 
+                | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, dims.dimy * 0.75) 
+                | ftxui::border;
+        }
+    )};
+    
+    // Notifications modal.
+    // ftxui::Component closeNotifButton {ftxui::Button(
+    //     "Close", notif::ackNotice, ftxui::ButtonOption::Ascii()
+    // )};
+    // ftxui::Component notifModal {[&] {
+    //     return ftxui::Renderer(
+    //         closeNotifButton, 
+    //         [&] {
+    //             return ftxui::vbox(
+    //                 ftxui::paragraph(notif::getNotification()), 
+    //                 ftxui::separator(), 
+    //                 closeNotifButton->Render()
+    //             );
+    //         }
+    //     );
+    // }()};
+    
+    // ftxui::Component closeRecentNotifsButton {ftxui::Button(
+    //     "Close", [&] {recentNotifsModalShown = false;}, ftxui::ButtonOption::Ascii()
+    // )};
+    // int recentNotifSelected {};
+    // ftxui::Component recentNotifsMenu {ftxui::Menu(
+    //     &notif::getRecentNotifications(), 
+    //     &recentNotifSelected, 
+    //     ftxui::MenuOption::VerticalAnimated()
+    // )};
+    // ftxui::Component recentNotifsModal {[] {
+    //     return 
+    // }()};
     
     ftxui::Component app {ftxui::Renderer(
         mainScreen, 
