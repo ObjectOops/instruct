@@ -303,7 +303,7 @@ static void createPaneBoxes(
     ftxui::Components &, 
     bool *, 
     int &, 
-    bool
+    const bool &
 );
 
 static ftxui::Dimensions getDimensions();
@@ -650,11 +650,10 @@ This message will only show once.)");
     sAuthPortInput |= ftxui::CatchEvent(onlyDigits);
     
     ftxui::MenuOption sCodePortMenuOptions {ftxui::MenuOption::Vertical()};
-    // sCodePortMenuOptions.elements_infix = [] (ftxui::Element elem) {
-    //     return ftxui::hbox(ftxui::text(""))
-    // }
     std::vector<std::string> sCodePortVec {};
+    int sCodePortSelected {};
     sCodePortMenuOptions.entries = &sCodePortVec;
+    sCodePortMenuOptions.selected = &sCodePortSelected;
     std::string sCodePortContent {};
     ftxui::Component sCodePortInput;
     ftxui::Closure sAddCodePort {[&] {
@@ -669,7 +668,9 @@ This message will only show once.)");
         }
     }};
     ftxui::Closure sRemoveCodePort {[&] {
-        sCodePortVec.erase(sCodePortVec.begin() + *sCodePortMenuOptions.selected);
+        if (!sCodePortVec.empty()) {
+            sCodePortVec.erase(sCodePortVec.begin() + sCodePortSelected);
+        }
     }};
     sCodePortInput = makeInput(sCodePortContent, "Click here to add a port.", sAddCodePort);
     sCodePortInput |= ftxui::CatchEvent(onlyDigits);
@@ -714,6 +715,7 @@ This message will only show once.)");
         sAuthHostContent = SData::studentsData->get_authHost();
         sAuthPortContent = std::to_string(SData::studentsData->get_authPort());
         
+        sCodePortVec.clear();
         const auto &sCodePortSet {SData::studentsData->get_codePorts()};
         for (int codePort : sCodePortSet) {
             sCodePortVec.push_back(std::to_string(codePort));
@@ -763,7 +765,7 @@ This message will only show once.)");
         UData::uiData->set_alwaysShowStudentUUIDs(alwaysShowStudentUUIDsSelection);
         UData::uiData->set_alwaysShowTestUUIDs(alwaysShowTestUUIDsSelection);
         
-        resetValues();
+        resetValues(); // Possibly redudant.
 
         spin = false;
         spinnerThread.join();
@@ -1037,7 +1039,7 @@ static void createPaneBoxes(
     ftxui::Components &dataBoxes, 
     bool *titleBarMenusShown, 
     int &lastTitleBarMenuIdx, 
-    bool showUUIDs
+    const bool &alwaysShowUUIDs
 ) {
     int dataBoxIdx {};
     std::vector<const DataType *> p_dataVec {};
@@ -1080,13 +1082,15 @@ static void createPaneBoxes(
             ftxui::EntryState e2 {e};
             e2.focused = e2.focused && titleBarMenusHidden;
             ftxui::Element elem {ftxui::CheckboxOption::Simple().transform(e2)};
+            ftxui::Element sepElem {ftxui::text("|")};
+            ftxui::Element uuidElem {
+                ftxui::text(uuids::to_string(p_data->uuid)) | ftxui::flex_shrink
+            };
             if ((e.focused && titleBarMenusHidden) || e.state) {
-                return ftxui::hbox(
-                    elem, 
-                    ftxui::text(showUUIDs ? " " + uuids::to_string(p_data->uuid) : "")
-                ) | ftxui::bgcolor(ftxui::Color::GrayDark);
+                return ftxui::hbox(elem, sepElem, uuidElem) 
+                    | ftxui::bgcolor(ftxui::Color::GrayDark);
             }
-            return elem;
+            return alwaysShowUUIDs ? ftxui::hbox(elem, sepElem, uuidElem) : elem;
         };
         
         // Ensure that the UI matches saved selected boxes.
