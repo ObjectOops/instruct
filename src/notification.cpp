@@ -1,3 +1,5 @@
+#include "loguru.hpp"
+
 #include "notification.hpp"
 
 namespace instruct::notif {
@@ -13,6 +15,8 @@ void notify(const std::string &newNotification) {
     notice = true;
     notification = newNotification;
     recentNotifications.insert(recentNotifications.begin(), notification);
+    
+    LOG_F(INFO, "New Notification: %s", newNotification.c_str());
 }
 void setNotification(const std::string &notif) {
     notification = notif;

@@ -319,7 +319,12 @@ bool ui::mainMenu() {
             "Then, import a list of students. "
             "This message will only show once."
         );
-        IData::instructorData->set_firstTime(false);
+        try {
+            IData::instructorData->set_firstTime(false);
+        } catch (const std::exception &e) {
+            LOG_F(WARNING, "First time message will show multiple times.");
+            LOG_F(WARNING, "%s --> %s", typeid(e).name(), e.what());
+        }
     }
 
     // These are button labels which need to change dynamically.
@@ -741,30 +746,36 @@ bool ui::mainMenu() {
         std::atomic_bool spin {true};
         std::thread spinnerThread {asyncDisplaySpinner("Saving changes...", spin)};
 
-        IData::instructorData->set_authHost(iAuthHostContent);
-        IData::instructorData->set_authPort(std::stoi(iAuthPortContent));
-        IData::instructorData->set_codePort(std::stoi(iCodePortContent));
-        
-        SData::studentsData->set_authHost(sAuthHostContent);
-        SData::studentsData->set_authPort(std::stoi(sAuthPortContent));
+        try {
+            IData::instructorData->set_authHost(iAuthHostContent);
+            IData::instructorData->set_authPort(std::stoi(iAuthPortContent));
+            IData::instructorData->set_codePort(std::stoi(iCodePortContent));
+            
+            SData::studentsData->set_authHost(sAuthHostContent);
+            SData::studentsData->set_authPort(std::stoi(sAuthPortContent));
 
-        std::set<int> sCodePortSet {};
-        for (std::string &codePort : sCodePortVec) {
-            sCodePortSet.insert(std::stoi(codePort));
+            std::set<int> sCodePortSet {};
+            for (std::string &codePort : sCodePortVec) {
+                sCodePortSet.insert(std::stoi(codePort));
+            }
+            SData::studentsData->set_codePorts(sCodePortSet);
+            
+            std::pair<int, int> i_sCodePortRangeContent {
+                std::stoi(sCodePortRangeContent.first), std::stoi(sCodePortRangeContent.second)
+            };
+            SData::studentsData->set_codePortRange(i_sCodePortRangeContent);
+            
+            SData::studentsData->set_useRandomPorts(sUseRandomPortsSelection);
+            
+            UData::uiData->set_alwaysShowStudentUUIDs(alwaysShowStudentUUIDsSelection);
+            UData::uiData->set_alwaysShowTestUUIDs(alwaysShowTestUUIDsSelection);
+        } catch (const std::exception &e) {
+            notif::notify("Failed to save all settings. Some settings may persist.");
+            
+            LOG_F(WARNING, "%s --> %s", typeid(e).name(), e.what());
         }
-        SData::studentsData->set_codePorts(sCodePortSet);
         
-        std::pair<int, int> i_sCodePortRangeContent {
-            std::stoi(sCodePortRangeContent.first), std::stoi(sCodePortRangeContent.second)
-        };
-        SData::studentsData->set_codePortRange(i_sCodePortRangeContent);
-        
-        SData::studentsData->set_useRandomPorts(sUseRandomPortsSelection);
-        
-        UData::uiData->set_alwaysShowStudentUUIDs(alwaysShowStudentUUIDsSelection);
-        UData::uiData->set_alwaysShowTestUUIDs(alwaysShowTestUUIDsSelection);
-        
-        resetValues(); // Possibly redudant.
+        resetValues();
 
         spin = false;
         spinnerThread.join();

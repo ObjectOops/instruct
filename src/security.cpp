@@ -72,16 +72,20 @@ bool sec::updateInstructPswd(const std::string &instructPswd) {
         );
         IData::instructorData->set_pswdSalt(salt);
     } catch (const std::exception &e) {
-        // Only relevant during initial set up.
-        setup::SetupError &setupError {setup::getSetupError()};
-        setupError.errCode = std::make_error_code(std::errc::io_error);
-        setupError.exType = typeid(e).name();
-        setupError.exMsg = e.what();
-        setupError.msg = "Failed to save instructor password.";
+        if (IData::instructorData->get_firstTime()) {
+            // Only relevant during initial set up.
+            setup::SetupError &setupError {setup::getSetupError()};
+            setupError.errCode = std::make_error_code(std::errc::io_error);
+            setupError.exType = typeid(e).name();
+            setupError.exMsg = e.what();
+            setupError.msg = "Failed to save instructor password.";
+        }
         
         notif::notify(
             "Failed to save password. Your new password will only be used during this session."
         );
+        
+        LOG_F(WARNING, "%s --> %s", typeid(e).name(), e.what());
         return false;
     }
     return true;
