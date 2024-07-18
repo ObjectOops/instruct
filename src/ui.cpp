@@ -921,8 +921,11 @@ bool ui::mainMenu() {
     recentNotifsMenuOptions.entries = &notif::getRecentNotifications();
     recentNotifsMenuOptions.selected = &recentNotifSelected;
     recentNotifsMenuOptions.on_enter = [&] {
-        notif::setNotification(notif::getRecentNotifications().at(recentNotifSelected));
-        notif::copyNotice();
+        const std::vector<std::string> &recentNotifs {notif::getRecentNotifications()};
+        if (recentNotifs.size() > 0) {
+            notif::setNotification(notif::getRecentNotifications().at(recentNotifSelected));
+            notif::copyNotice();
+        }
     };
     ftxui::Component recentNotifsMenu {ftxui::Menu(recentNotifsMenuOptions)};
     ftxui::Component recentNotifsModal {ftxui::Renderer(
