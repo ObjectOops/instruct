@@ -314,7 +314,7 @@ bool ui::mainMenu() {
     bool exitState {true};
     
     if (IData::instructorData->get_firstTime()) {
-        notif::setNotification(
+        notif::notify(
             "Please select a version of OpenVsCode Server to install. "
             "Then, import a list of students. "
             "This message will only show once."
@@ -663,7 +663,7 @@ bool ui::mainMenu() {
             sCodePortContent.clear();
             sCodePortInput->TakeFocus();
         } else {
-            notif::setNotification("Port " + sCodePortContent + " already present.");
+            notif::notify("Port " + sCodePortContent + " already present.");
         }
     }};
     ftxui::Closure sRemoveCodePort {[&] {
@@ -906,8 +906,13 @@ bool ui::mainMenu() {
         "Close", [&] {recentNotifsModalShown = false;}, ftxui::ButtonOption::Ascii()
     )};
     ftxui::MenuOption recentNotifsMenuOptions {ftxui::MenuOption::VerticalAnimated()};
+    int recentNotifSelected {};
     recentNotifsMenuOptions.entries = &notif::getRecentNotifications();
-    recentNotifsMenuOptions.on_enter = notif::copyNotice;
+    recentNotifsMenuOptions.selected = &recentNotifSelected;
+    recentNotifsMenuOptions.on_enter = [&] {
+        notif::setNotification(notif::getRecentNotifications().at(recentNotifSelected));
+        notif::copyNotice();
+    };
     ftxui::Component recentNotifsMenu {ftxui::Menu(recentNotifsMenuOptions)};
     ftxui::Component recentNotifsModal {ftxui::Renderer(
         ftxui::Container::Vertical({recentNotifsMenu, closeRecentNotifsButton}), 

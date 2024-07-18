@@ -5,32 +5,15 @@
 #include <vector>
 
 namespace instruct::notif {
-    // This needs to be a vector since the FTXUI Menu component only takes vectors.
-    inline std::vector<std::string> recentNotifications {};
-    inline std::string notification {};
-    inline bool notice {false};
+    void notify(const std::string &newNotification);
+    
+    void setNotification(const std::string &notification);
+    const std::string &getNotification();
+    const std::vector<std::string> &getRecentNotifications();
 
-    inline void setNotification(const std::string &newNotification) {
-        notice = true;
-        notification = newNotification;
-        recentNotifications.insert(recentNotifications.begin(), notification);
-    }
-    inline const std::string &getNotification() {
-        return notification;
-    }
-    inline const std::vector<std::string> &getRecentNotifications() {
-        return recentNotifications;
-    }
-
-    inline bool &getNotice() {
-        return notice;
-    }
-    inline void ackNotice() {
-        notice = false;
-    }
-    inline void copyNotice() {
-        notice = true;
-    }
+    bool &getNotice();
+    void ackNotice();
+    void copyNotice();
 }
 
 #endif

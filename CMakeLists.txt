@@ -97,6 +97,7 @@ endif()
 # -----------------------------
 
 add_executable(instruct
+    src/notification.cpp
     src/security.cpp
     src/logging.cpp
     src/setup.cpp

@@ -79,7 +79,7 @@ bool sec::updateInstructPswd(const std::string &instructPswd) {
         setupError.exMsg = e.what();
         setupError.msg = "Failed to save instructor password.";
         
-        notif::setNotification(
+        notif::notify(
             "Failed to save password. Your new password will only be used during this session."
         );
         return false;
