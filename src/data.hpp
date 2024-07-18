@@ -103,6 +103,7 @@ namespace instruct {
             std::string displayName;
             std::string instructorRunCmd;
             std::string studentRunCmd;
+            double secondsAllotted;
         };
         DATA_ATTR(SINGLE(std::unordered_map<uuids::uuid, TestCase>), tests)
         

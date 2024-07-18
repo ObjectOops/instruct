@@ -34,12 +34,21 @@ bool ui::initAllHandled() {
         term::enableAlternateScreenBuffer();
         std::atomic_bool spin {true};
         std::thread spinnerThread {asyncDisplaySpinner("Loading...", spin)};
+        
+        auto stopSpinnerThread {[&] {
+            spin = false;
+            spinnerThread.join();
+            term::disableAlternateScreenBuffer();            
+        }};
 
-        Data::initAll();
+        try {
+            Data::initAll();
+        } catch (const std::exception &e) {
+            stopSpinnerThread();
+            throw;
+        }
 
-        spin = false;
-        spinnerThread.join();
-        term::disableAlternateScreenBuffer();
+        stopSpinnerThread();
     } catch (const std::exception &e) {
         try {
             std::filesystem::rename(

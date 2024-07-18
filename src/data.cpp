@@ -31,6 +31,7 @@ namespace keys {
     static const std::string TESTS {"tests"};
     static const std::string I_RUN_CMD {"instructor_run_command"};
     static const std::string S_RUN_CMD {"student_run_command"};
+    static const std::string SECONDS_ALLOTTED {"seconds_allotted"};
     
     // UI keys.
     static const std::string ALWAYS_SHOW_STUDENT_UUIDS {"always_show_student_uuids"};
@@ -246,6 +247,7 @@ struct convert<TData::TestCase> {
         node[keys::DISPLAY_NAME] = rhs.displayName;
         node[keys::I_RUN_CMD] = rhs.instructorRunCmd;
         node[keys::S_RUN_CMD] = rhs.studentRunCmd;
+        node[keys::SECONDS_ALLOTTED] = rhs.secondsAllotted;
         return node;
     }
     static bool decode(const Node &node, TData::TestCase &rhs) {
@@ -253,6 +255,7 @@ struct convert<TData::TestCase> {
         rhs.displayName = node[keys::DISPLAY_NAME].as<std::string>();
         rhs.instructorRunCmd = node[keys::I_RUN_CMD].as<std::string>();
         rhs.studentRunCmd = node[keys::S_RUN_CMD].as<std::string>();
+        rhs.secondsAllotted = node[keys::SECONDS_ALLOTTED].as<double>();
 
         return true;
     }

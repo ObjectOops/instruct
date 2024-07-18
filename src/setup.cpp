@@ -106,7 +106,8 @@ bool setup::setDefaults() {
                 debugTestUUID, 
                 "Placeholder Test", 
                 "echo 'Hello, world!'", 
-                "echo 'Hello, world!'"
+                "echo 'Hello, world!'", 
+                0.1 + 0.2
             }
         }});
         #endif
