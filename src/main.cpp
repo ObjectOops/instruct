@@ -40,10 +40,15 @@ int main(int argc, char **argv) {
     LOG_F(1, "Instance locked.");
     
     LOG_F(INFO, "Starting main application");
-    if (!instruct::ui::mainMenu()) {
-        LOG_F(INFO, "Exiting.");
-        return EXIT_FAILURE;
-    }
+    bool reloadMainUI;
+    do {
+        auto [exitNow, exitSuccess] {instruct::ui::mainMenu()};
+        if (!exitSuccess) {
+            LOG_F(INFO, "Exiting.");
+            return EXIT_FAILURE;
+        }
+        reloadMainUI = !exitNow;
+    } while (reloadMainUI);
         
     LOG_F(INFO, "Exiting main application.");
     

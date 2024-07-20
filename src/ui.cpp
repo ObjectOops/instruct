@@ -78,7 +78,7 @@ See the log file for more details.)"};
     return true;
 }
 
-bool ui::saveAllHandled() {
+std::tuple<bool, bool> ui::saveAllHandled() {
     try {
         Data::saveAll();
     } catch (const std::exception &e) {
@@ -90,9 +90,9 @@ See the log file for more details.)"};
         LOG_F(ERROR, typeid(e).name());
         LOG_F(ERROR, e.what());
         std::cerr << msg << '\n';
-        return false;
+        return std::make_tuple(true, false);
     }
-    return true;
+    return std::make_tuple(true, true);
 }
 
 void ui::print(const std::string &s) {
@@ -322,9 +322,9 @@ static ftxui::Component makeInput(
 );
 
 // This is a very large function. The main UI does a lot of things.
-bool ui::mainMenu() {
+std::tuple<bool, bool> ui::mainMenu() {
     auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
-    bool exitState {true};
+    std::tuple<bool, bool> exitState {std::make_tuple(true, true)};
     
     if (IData::instructorData->get_firstTime()) {
         notif::notify(
@@ -1007,36 +1007,14 @@ bool ui::mainMenu() {
             stopAsyncDisplaySpinner(spinnerThread, spin);
             return; // Stay in the import modal.
         }
-        
-        // Recreate the student pane.
-        // const std::unordered_map<uuids::uuid, SData::Student> &studentMap {
-        //     SData::studentsData->get_students()
-        // };
-        // const int studentCount {static_cast<int>(studentMap.size())};
-        
-        studentBoxes.clear();
-        // studentBoxes.reserve(studentCount);
-        // u_studentBoxStates = std::make_unique<bool []>(studentCount);
-        // p_studentBoxStates = u_studentBoxStates.get();
-        
-        // createPaneBoxes(
-        //     studentMap, 
-        //     selectedStudentUUIDS, 
-        //     p_studentBoxStates, 
-        //     studentBoxes, 
-        //     titleBarMenusShown, 
-        //     lastTitleBarMenuIdx, 
-        //     UData::uiData->get_alwaysShowStudentUUIDs()
-        // );
-        
-        // studentPane = studentBoxes.empty() 
-        //     ? ftxui::Renderer([] {return ftxui::text("No students to display.");}) 
-        //     : ftxui::Container::Vertical(studentBoxes);
+
+        exitState = std::make_tuple(false, true);
 
         notif::notify("Successfully imported students list.");
 
         stopAsyncDisplaySpinner(spinnerThread, spin);
         importModalShown = false;
+        appScreen.Exit();
     }, ftxui::ButtonOption::Ascii())};
     ftxui::InputOption importInputOptions {ftxui::InputOption::Default()};
     ftxui::Elements autoCompletePaths {};

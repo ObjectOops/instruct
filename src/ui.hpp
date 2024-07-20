@@ -6,10 +6,10 @@
 
 namespace instruct::ui {
     bool initAllHandled();
-    bool saveAllHandled();
+    std::tuple<bool, bool> saveAllHandled();
     void print(const std::string &);
     std::tuple<bool, int> setupMenu();
-    bool mainMenu();
+    std::tuple<bool, bool> mainMenu();
 }
 
 #endif
