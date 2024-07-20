@@ -1041,12 +1041,26 @@ bool ui::mainMenu() {
     ftxui::InputOption importInputOptions {ftxui::InputOption::Default()};
     ftxui::Elements autoCompletePaths {};
     importInputOptions.on_change = [&] {
+        // Suggest valid paths.
         try {
             autoCompletePaths.clear();
             std::filesystem::path dirPath {importInputContent};
             std::filesystem::directory_iterator dirIter {dirPath.parent_path()};
-            for (const std::filesystem::directory_entry &dirEntry : dirIter) {
-                autoCompletePaths.push_back(ftxui::text(dirEntry.path()));
+            if (dirPath.has_filename()) {
+                std::string fileName {dirPath.filename()};
+                for (const std::filesystem::directory_entry &dirEntry : dirIter) {
+                    const std::filesystem::path &pathEntry {dirEntry.path()};
+                    if (pathEntry.has_filename() 
+                        && std::string {pathEntry.filename()}.rfind(fileName, 0) == 0
+                    ) {
+                        autoCompletePaths.push_back(ftxui::text(pathEntry));
+                    }
+                }
+            } else {
+                for (const std::filesystem::directory_entry &dirEntry : dirIter) {
+                    const std::filesystem::path &pathEntry {dirEntry.path()};
+                    autoCompletePaths.push_back(ftxui::text(pathEntry));
+                }                
             }
         } catch (const std::exception &e) {
             // Do nothing.
