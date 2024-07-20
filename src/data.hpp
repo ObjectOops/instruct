@@ -97,6 +97,7 @@ namespace instruct {
             const std::string &, 
             bool
         );
+        static bool exportStudentsList(const std::filesystem::path &);
     };
 
     class TData : public Data {

@@ -355,7 +355,7 @@ std::tuple<bool, bool> ui::mainMenu() {
     // ---------------------------------------------------------
     
     bool importModalShown {false};
-    bool exportSListModalShown {false};
+    bool exportModalShown {false};
     bool installOVSCSModalShown {false};
     // Data structure containing the titles of each title bar menu, 
     // along with the label of each button and their functions.
@@ -416,7 +416,7 @@ std::tuple<bool, bool> ui::mainMenu() {
                 }, 
                 {
                     "Export Students List", 
-                    [&] {exportSListModalShown = true;}
+                    [&] {exportModalShown = true;}
                 }, 
                 {
                     "Install OpenVsCode Server", 
@@ -1017,11 +1017,11 @@ std::tuple<bool, bool> ui::mainMenu() {
         appScreen.Exit();
     }, ftxui::ButtonOption::Ascii())};
     ftxui::InputOption importInputOptions {ftxui::InputOption::Default()};
-    ftxui::Elements autoCompletePaths {};
+    ftxui::Elements autoImportCompletePaths {};
     importInputOptions.on_change = [&] {
         // Suggest valid paths.
         try {
-            autoCompletePaths.clear();
+            autoImportCompletePaths.clear();
             std::filesystem::path dirPath {importInputContent};
             std::filesystem::directory_iterator dirIter {dirPath.parent_path()};
             if (dirPath.has_filename()) {
@@ -1031,13 +1031,13 @@ std::tuple<bool, bool> ui::mainMenu() {
                     if (pathEntry.has_filename() 
                         && std::string {pathEntry.filename()}.rfind(fileName, 0) == 0
                     ) {
-                        autoCompletePaths.push_back(ftxui::text(pathEntry));
+                        autoImportCompletePaths.push_back(ftxui::text(pathEntry));
                     }
                 }
             } else {
                 for (const std::filesystem::directory_entry &dirEntry : dirIter) {
                     const std::filesystem::path &pathEntry {dirEntry.path()};
-                    autoCompletePaths.push_back(ftxui::text(pathEntry));
+                    autoImportCompletePaths.push_back(ftxui::text(pathEntry));
                 }                
             }
         } catch (const std::exception &e) {
@@ -1072,7 +1072,7 @@ std::tuple<bool, bool> ui::mainMenu() {
             return ftxui::vbox(
                 ftxui::vbox(
                     ftxui::hbox(ftxui::text("CSV File Path: "), importInput->Render()), 
-                    ftxui::vbox(autoCompletePaths) | ftxui::flex_shrink, 
+                    ftxui::vbox(autoImportCompletePaths) | ftxui::flex_shrink, 
                     ftxui::vbox(
                         ftxui::hbox(
                             ftxui::text("Name Column: "), importNameColInput->Render()
@@ -1105,6 +1105,87 @@ std::tuple<bool, bool> ui::mainMenu() {
         }
     )};
     
+    // Export students list modal.
+    std::string exportInputContent {std::filesystem::current_path()};
+    ftxui::Component cancelExportButton {ftxui::Button(
+        "Cancel", [&] {exportModalShown = false;}, ftxui::ButtonOption::Ascii()
+    )};
+    ftxui::Component confirmExportButton {ftxui::Button("Export", [&] {
+        std::atomic_bool spin {true};
+        std::thread spinnerThread {asyncDisplaySpinner("Exporting students list...", spin)};
+
+        try {
+            if (!SData::exportStudentsList(exportInputContent)) {
+                stopAsyncDisplaySpinner(spinnerThread, spin);
+                return;
+            }
+        } catch (const std::exception &e) {
+            notif::notify("Failed to export students list for an unknown reason.");
+            
+            log::logExceptionWarning(e);
+            
+            stopAsyncDisplaySpinner(spinnerThread, spin);
+            return; // Stay in the export modal.
+        }
+
+        notif::notify("Successfully exported students list.");
+
+        stopAsyncDisplaySpinner(spinnerThread, spin);
+        exportModalShown = false;
+    }, ftxui::ButtonOption::Ascii())};
+    ftxui::InputOption exportInputOptions {ftxui::InputOption::Default()};
+    ftxui::Elements autoExportCompletePaths {};
+    exportInputOptions.on_change = [&] {
+        // Suggest valid paths.
+        try {
+            autoExportCompletePaths.clear();
+            std::filesystem::path dirPath {exportInputContent};
+            std::filesystem::directory_iterator dirIter {dirPath.parent_path()};
+            for (const std::filesystem::directory_entry &dirEntry : dirIter) {
+                const std::filesystem::path &pathEntry {dirEntry.path()};
+                if (std::filesystem::is_directory(pathEntry)) {
+                    autoExportCompletePaths.push_back(ftxui::text(pathEntry));
+                }
+            }
+        } catch (const std::exception &e) {
+            // Do nothing.
+        }
+    };
+    ftxui::Component exportInput {makeInput(
+        exportInputContent, "i.e. path/to/dir", {}, exportInputOptions
+    )};
+    ftxui::Component exportModal {ftxui::Renderer(
+        ftxui::Container::Vertical({
+            exportInput, 
+            ftxui::Container::Horizontal({
+                cancelExportButton, confirmExportButton
+            })
+        }), 
+        [&] {
+            ftxui::Dimensions dims {getDimensions()};
+            return ftxui::vbox(
+                ftxui::vbox(
+                    ftxui::hbox(ftxui::text("CSV File Path: "), exportInput->Render()), 
+                    ftxui::vbox(autoExportCompletePaths) | ftxui::flex_shrink
+                ) | ftxui::flex_shrink | ftxui::flex, 
+                ftxui::separator(), 
+                ftxui::hbox(
+                    cancelExportButton->Render() 
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | ftxui::color(ftxui::Color::Red), 
+                    confirmExportButton->Render()
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | ftxui::color(ftxui::Color::GreenYellow)
+                )
+            ) 
+                | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, dims.dimx * 0.9) 
+                | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, dims.dimy * 0.9) 
+                | ftxui::border;
+        }
+    )};
+    
     ftxui::Component app {ftxui::Renderer(
         mainScreen, 
         [&] {
@@ -1122,6 +1203,7 @@ std::tuple<bool, bool> ui::mainMenu() {
     app |= ftxui::Modal(settingsModal, &settingsModalShown);
     app |= ftxui::Modal(recentNotifsModal, &recentNotifsModalShown);
     app |= ftxui::Modal(importModal, &importModalShown);
+    app |= ftxui::Modal(exportModal, &exportModalShown);
     app |= ftxui::Modal(notifModal, &notif::getNotice());
 
     appScreen.Loop(app);

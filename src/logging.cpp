@@ -31,6 +31,9 @@ void log::logExceptionWarning(const std::exception &e) {
     LOG_F(WARNING, "%s --> %s", typeid(e).name(), e.what());
 }
 void log::logErrorCodeWarning(const std::error_code &err) {
+    if (err.value() == 0) {
+        return;
+    }
     LOG_F(
         WARNING, 
         "Error Code: %d --> %s --> %s", 

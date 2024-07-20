@@ -4,6 +4,7 @@
 #include <vector>
 #include <random>
 #include <array>
+#include <tuple>
 
 #define LOGURU_WITH_STREAMS 1
 #include "loguru.hpp"
@@ -198,6 +199,46 @@ bool SData::importStudentsList(
     studentsData->students.merge(importStudentMap);
     
     studentsData->saveData();
+    return true;
+}
+bool SData::exportStudentsList(const std::filesystem::path &filePath) {
+    std::error_code err;
+    
+    // Check if path is valid.
+    std::filesystem::path parentPath {filePath.parent_path()};
+    if (!std::filesystem::exists(parentPath, err)) {
+        notif::notify("Invalid path: " + std::string {parentPath});
+        
+        log::logErrorCodeWarning(err);
+        
+        return false;
+    }
+    
+    // Check if file already exists.
+    if (std::filesystem::is_regular_file(filePath, err)) {
+        notif::notify("File already exists: " + std::string {filePath});
+        
+        log::logErrorCodeWarning(err);
+        
+        return false;
+    }
+    
+    std::ofstream fout {filePath};
+    csv::CSVWriter<std::ofstream> writer {csv::make_csv_writer(fout)};
+    writer << std::make_tuple(
+        "UUID", "Name", 
+        "Elevated Privileges (1 --> elevated, 0 --> normal)", 
+        "Password Hash (SHA256)", "Password Salt"
+    );
+    for (auto [uuid, student] : studentsData->students) {
+        writer << std::make_tuple(
+            uuids::to_string(student.uuid), student.displayName, 
+            student.elevatedPriveleges, 
+            student.pswdSHA256, student.pswdSalt
+        );
+    }
+    fout.close();
+    
     return true;
 }
 
