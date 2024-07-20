@@ -2,6 +2,7 @@
 #include <typeinfo>
 #include <thread>
 #include <random>
+#include <tuple>
 
 #include "picosha2.h"
 #include "loguru.hpp"
@@ -11,7 +12,6 @@
 #include "security.hpp"
 #include "logging.hpp"
 #include "setup.hpp"
-#include "data.hpp"
 
 namespace instruct {
 
@@ -60,18 +60,24 @@ bool sec::createInstance() {
     return true;
 }
 
+static std::tuple<std::string, std::string> hashAndSalt(const std::string &pswd) {
+    // These are for salting. Maybe a more cryto-secure RNG would be better.
+    std::random_device seed {};
+    std::mt19937 rng {seed()};
+    std::string salt {std::to_string(rng())};
+    
+    return {picosha2::hash256_hex_string(pswd + salt), salt};
+}
+
 bool sec::updateInstructPswd(const std::string &instructPswd) {
     try {
-        // These are for salting.
-        // Maybe a more cryto-secure RNG would be better.
-        std::random_device seed {};
-        std::mt19937 rng {seed()};
-        std::string salt {std::to_string(rng())};
+        auto [instructPswdHash, instructPswdSalt] {hashAndSalt(instructPswd)};
         
-        IData::instructorData->set_pswdSHA256(
-            picosha2::hash256_hex_string(instructPswd + salt)
-        );
-        IData::instructorData->set_pswdSalt(salt);
+        // There exists a possible edge-case here where the first save succeeds but 
+        // the second one doesn't. However, I can think of no plausible instance 
+        // where such a scenario can occur.
+        IData::instructorData->set_pswdSHA256(instructPswdHash);
+        IData::instructorData->set_pswdSalt(instructPswdSalt);
     } catch (const std::exception &e) {
         if (IData::instructorData->get_firstTime()) {
             // Only relevant during initial set up.
@@ -90,6 +96,17 @@ bool sec::updateInstructPswd(const std::string &instructPswd) {
         return false;
     }
     return true;
+}
+
+void sec::updateStudentPswd(
+    std::unordered_map<uuids::uuid, SData::Student> &studentMap, 
+    const uuids::uuid &studentUUID, 
+    const std::string &studentPswd
+) {
+    auto [studentPswdHash, studentPswdSalt] {hashAndSalt(studentPswd)};
+    SData::Student &student {studentMap.at(studentUUID)};
+    student.pswdSHA256 = studentPswdHash;
+    student.pswdSalt = studentPswdSalt;
 }
 
 }

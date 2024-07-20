@@ -94,6 +94,19 @@ if(NOT stduuid_POPULATED)
     FetchContent_Populate(stduuid)
     add_subdirectory(${stduuid_SOURCE_DIR} ${stduuid_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
+# VINCE'S CSV PARSER ----------
+FetchContent_Declare(csv-parser
+    GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser.git
+    GIT_TAG 2.3.0
+    GIT_SUBMODULES ""
+)
+
+FetchContent_GetProperties(csv-parser)
+if(NOT csv-parser_POPULATED)
+    message(STATUS "Fetching csv-parser...")
+    FetchContent_Populate(csv-parser)
+    add_subdirectory(${csv-parser_SOURCE_DIR} ${csv-parser_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 # -----------------------------
 
 add_executable(instruct
@@ -106,8 +119,10 @@ add_executable(instruct
     src/ui.cpp
 )
 
-# For some reason cpp-httplib needs be added manually and has other strange config issues.
+# For some reason cpp-httplib and csv-parser 
+# need be added manually and have other strange config issues.
 target_include_directories(instruct PRIVATE src ${cpp-httplib_SOURCE_DIR})
+target_include_directories(instruct PRIVATE src "${csv-parser_SOURCE_DIR}/single_include")
 
 target_link_libraries(instruct
     PRIVATE ftxui::screen
@@ -118,6 +133,7 @@ target_link_libraries(instruct
     PRIVATE loguru::loguru
     # PRIVATE cpp-httplib # Single header file.
     PRIVATE stduuid # Just headers.
+    # PRIVATE csv-parser # Single header file.
     PRIVATE ${CMAKE_DL_LIBS}
 )
 

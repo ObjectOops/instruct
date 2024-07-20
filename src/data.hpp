@@ -89,6 +89,14 @@ namespace instruct {
         DATA_ATTR(SINGLE(std::unordered_map<uuids::uuid, Student>), students)
         
         inline static std::unique_ptr<SData> studentsData;
+        
+        static bool importStudentsList(
+            const std::filesystem::path &, 
+            const std::string &, 
+            const std::string &, 
+            const std::string &, 
+            bool
+        );
     };
 
     class TData : public Data {

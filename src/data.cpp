@@ -1,11 +1,18 @@
+#include <system_error>
 #include <stdexcept>
 #include <fstream>
 #include <vector>
+#include <random>
+#include <array>
 
 #define LOGURU_WITH_STREAMS 1
 #include "loguru.hpp"
+#include "csv.hpp"
 
+#include "notification.hpp"
 #include "constants.hpp"
+#include "security.hpp"
+#include "logging.hpp"
 #include "data.hpp"
 
 namespace instruct {
@@ -144,6 +151,56 @@ void SData::saveData() {
     Data::saveData();
 }
 
+static uuids::uuid generateUUID();
+
+bool SData::importStudentsList(
+    const std::filesystem::path &filePath, 
+    const std::string &nameCol, 
+    const std::string &pswdCol, 
+    const std::string &privCol, 
+    bool privColEnabled
+) {
+    std::error_code err;
+    
+    // Check for file path validity.
+    if (!std::filesystem::is_regular_file(filePath, err)) {
+        notif::notify("Invalid file path: " + std::string {filePath});
+        
+        log::logErrorCodeWarning(err);
+        
+        return false;
+    }
+    
+    // Check if the expected CSV columns are present.
+    csv::CSVReader reader {filePath.c_str()};
+    if (reader.index_of(nameCol) == csv::CSV_NOT_FOUND 
+        || reader.index_of(pswdCol) == csv::CSV_NOT_FOUND 
+        || (privColEnabled && reader.index_of(privCol) == csv::CSV_NOT_FOUND)
+    ) {
+        notif::notify("Invalid CSV column(s).");
+        return false;
+    }
+
+    std::unordered_map<uuids::uuid, Student> importStudentMap {};    
+    for (csv::CSVRow &row : reader) {
+        uuids::uuid newUUID {generateUUID()};
+        
+        Student newStudent {};
+        newStudent.uuid = newUUID;
+        newStudent.displayName = row[nameCol].get<>();
+        newStudent.elevatedPriveleges = privColEnabled ? row[privCol].get<bool>() : false;
+        importStudentMap.emplace(newUUID, std::move(newStudent));
+        
+        sec::updateStudentPswd(importStudentMap, newUUID, row[pswdCol].get<>());
+    }
+    
+    // Let it be improbable that there's a UUID collision.
+    studentsData->students.merge(importStudentMap);
+    
+    studentsData->saveData();
+    return true;
+}
+
 TData::TData(const std::filesystem::path &filePath) : Data {filePath} {
     selectedTestUUIDs = yaml[keys::SELECTED_TESTS].as<std::unordered_set<uuids::uuid>>();
     
@@ -182,6 +239,18 @@ void UData::saveData() {
     yaml[keys::STUDENT_PANE_WIDTH] = studentPaneWidth;
     
     Data::saveData();
+}
+
+static uuids::uuid generateUUID() {
+    // I'm not sure why the process to generate random UUIDs with stduuid 
+    // requires so many steps, but this is based on what was given in the README.
+    std::random_device rd {};
+    std::array<int, std::mt19937::state_size> seed {};
+    std::generate(seed.begin(), seed.end(), std::ref(rd));
+    std::seed_seq seq (seed.begin(), seed.end());
+    std::mt19937 rng {seq};
+    uuids::uuid_random_generator uuidGen {rng};
+    return uuidGen();
 }
 
 }

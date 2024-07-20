@@ -30,5 +30,12 @@ void log::logVersion() {
 void log::logExceptionWarning(const std::exception &e) {
     LOG_F(WARNING, "%s --> %s", typeid(e).name(), e.what());
 }
+void log::logErrorCodeWarning(const std::error_code &err) {
+    LOG_F(
+        WARNING, 
+        "Error Code: %d --> %s --> %s", 
+        err.value(), err.message().c_str(), err.category().name()
+    );
+}
 
 }

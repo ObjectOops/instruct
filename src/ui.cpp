@@ -29,6 +29,7 @@
 namespace instruct {
 
 static std::thread asyncDisplaySpinner(const std::string &, std::atomic_bool &);
+static void stopAsyncDisplaySpinner(std::thread &, std::atomic_bool &);
 
 bool ui::initAllHandled() {
     try {
@@ -36,20 +37,16 @@ bool ui::initAllHandled() {
         std::atomic_bool spin {true};
         std::thread spinnerThread {asyncDisplaySpinner("Loading...", spin)};
         
-        auto stopSpinnerThread {[&] {
-            spin = false;
-            spinnerThread.join();
-            term::disableAlternateScreenBuffer();            
-        }};
-
         try {
             Data::initAll();
         } catch (const std::exception &e) {
-            stopSpinnerThread();
+            stopAsyncDisplaySpinner(spinnerThread, spin);
+            term::disableAlternateScreenBuffer();
             throw;
         }
 
-        stopSpinnerThread();
+        stopAsyncDisplaySpinner(spinnerThread, spin);
+        term::disableAlternateScreenBuffer();
     } catch (const std::exception &e) {
         try {
             std::filesystem::rename(
@@ -317,6 +314,12 @@ static void createPaneBoxes(
 );
 
 static ftxui::Dimensions getDimensions();
+static ftxui::Component makeInput(
+    std::string &, 
+    std::string, 
+    ftxui::Closure = {}, 
+    ftxui::InputOption = ftxui::InputOption::Default()
+);
 
 // This is a very large function. The main UI does a lot of things.
 bool ui::mainMenu() {
@@ -351,6 +354,9 @@ bool ui::mainMenu() {
     std::string runAllTestsButtonLabel {dynamicLabels.ratbl};
     // ---------------------------------------------------------
     
+    bool importModalShown {false};
+    bool exportSListModalShown {false};
+    bool installOVSCSModalShown {false};
     // Data structure containing the titles of each title bar menu, 
     // along with the label of each button and their functions.
     std::vector<TitleBarMenuContents> titleBarMenuContents {
@@ -406,15 +412,15 @@ bool ui::mainMenu() {
             "Set Up", {
                 {
                     "Import Students List", 
-                    [] {}
+                    [&] {importModalShown = true;}
                 }, 
                 {
                     "Export Students List", 
-                    [] {}
+                    [&] {exportSListModalShown = true;}
                 }, 
                 {
                     "Install OpenVsCode Server", 
-                    [] {}
+                    [&] {installOVSCSModalShown = true;}
                 }
             }
         }
@@ -584,7 +590,7 @@ bool ui::mainMenu() {
     // Parent container for all components.
     ftxui::Component mainScreen {ftxui::Container::Vertical({titleBar, mainPanes})};
     
-    // Modals (exit confirmation, settings, notifications, title bar and pane functions, etc.).
+    // Modals (functions which require an additional window and freeze the main screen).
     
     // Exit modal.
     ftxui::Component exitNegative {ftxui::Button(
@@ -599,8 +605,7 @@ bool ui::mainMenu() {
         LOG_F(INFO, "Finalizing save data.");
         exitState = instruct::ui::saveAllHandled();
         
-        spin = false;
-        spinnerThread.join();
+        stopAsyncDisplaySpinner(spinnerThread, spin);
         appScreen.Exit();
     }, ftxui::ButtonOption::Ascii())};
     ftxui::Component exitModal {ftxui::Renderer(
@@ -629,17 +634,6 @@ bool ui::mainMenu() {
     // Settings modal.
     auto onlyDigits {[] (ftxui::Event event) {
         return event.is_character() && !std::isdigit(event.character()[0]);
-    }};
-    auto makeInput {[] (
-        std::string &content, std::string placeholder, ftxui::Closure on_enter = {}
-    ) {
-        ftxui::InputOption inputOptions;
-        inputOptions.content = &content;
-        inputOptions.multiline = false;
-        inputOptions.on_enter = on_enter;
-        inputOptions.placeholder = placeholder;
-        inputOptions.transform = inputTransformCustom;
-        return ftxui::Input(inputOptions);
     }};
     std::vector<std::string> onOffToggle {"Off", "On"};
     auto makeOnOffToggle([] (std::vector<std::string> &toggles, int &selection) {
@@ -757,6 +751,22 @@ bool ui::mainMenu() {
         std::thread spinnerThread {asyncDisplaySpinner("Saving changes...", spin)};
 
         try {
+            // Check for certain criteria.
+            std::pair<int, int> i_sCodePortRangeContent {
+                std::stoi(sCodePortRangeContent.first), std::stoi(sCodePortRangeContent.second)
+            };
+            if (iAuthHostContent.empty() 
+                || iAuthPortContent.empty() 
+                || iCodePortContent.empty() 
+                || sAuthHostContent.empty() 
+                || sAuthPortContent.empty() 
+                || i_sCodePortRangeContent.first > i_sCodePortRangeContent.second
+            ) {
+                notif::notify("A field was left empty or was out of range.");
+                stopAsyncDisplaySpinner(spinnerThread, spin);
+                return;
+            }
+            
             IData::instructorData->set_authHost(iAuthHostContent);
             IData::instructorData->set_authPort(std::stoi(iAuthPortContent));
             IData::instructorData->set_codePort(std::stoi(iCodePortContent));
@@ -770,9 +780,6 @@ bool ui::mainMenu() {
             }
             SData::studentsData->set_codePorts(sCodePortSet);
             
-            std::pair<int, int> i_sCodePortRangeContent {
-                std::stoi(sCodePortRangeContent.first), std::stoi(sCodePortRangeContent.second)
-            };
             SData::studentsData->set_codePortRange(i_sCodePortRangeContent);
             
             SData::studentsData->set_useRandomPorts(sUseRandomPortsSelection);
@@ -780,15 +787,21 @@ bool ui::mainMenu() {
             UData::uiData->set_alwaysShowStudentUUIDs(alwaysShowStudentUUIDsSelection);
             UData::uiData->set_alwaysShowTestUUIDs(alwaysShowTestUUIDsSelection);
         } catch (const std::exception &e) {
-            notif::notify("Failed to save all settings. Some settings may persist.");
+            notif::notify("Failed to save all settings. Some old settings may persist.");
+            resetValues();
             
             log::logExceptionWarning(e);
+            
+            stopAsyncDisplaySpinner(spinnerThread, spin);
+            return;
         }
-        
+        // Reset values on successful save in case there's a bug 
+        // where a value is not actually saved.
         resetValues();
-
-        spin = false;
-        spinnerThread.join();
+        
+        notif::notify("Saved settings.");
+        
+        stopAsyncDisplaySpinner(spinnerThread, spin);
     }, ftxui::ButtonOption::Ascii())};
 
     auto inputLine {[] (std::string label, ftxui::Component &component) {
@@ -851,12 +864,12 @@ bool ui::mainMenu() {
                     ftxui::text("Instructor Settings") | ftxui::bold | ftxui::underlined, 
                     inputLine("Instruct Host: ", iAuthHostInput), 
                     inputLine("Instruct Port: ", iAuthPortInput), 
-                    inputLine("Code Ports: ", iCodePortInput), 
+                    inputLine("Code Port: ", iCodePortInput), 
                     ftxui::separatorEmpty(), 
                     ftxui::text("Student Settings") | ftxui::bold | ftxui::underlined, 
                     inputLine("Instruct Host: ", sAuthHostInput), 
                     inputLine("Instruct Port: ", sAuthPortInput), 
-                    ftxui::text("Code Port: "), 
+                    ftxui::text("Code Ports: "), 
                     sCodePortInput->Render(), 
                     ftxui::hbox(
                         sAddCodePortButton->Render() 
@@ -884,7 +897,8 @@ bool ui::mainMenu() {
                     | ftxui::focusPosition(1, settingsScrollPosition) 
                     | ftxui::vscroll_indicator 
                     | ftxui::yframe 
-                    | ftxui::flex_shrink, 
+                    | ftxui::flex_shrink 
+                    | ftxui::flex, 
                 ftxui::separator(), 
                 ftxui::hbox(
                     settingsCancelChangesButton->Render() 
@@ -933,7 +947,7 @@ bool ui::mainMenu() {
     recentNotifsMenuOptions.on_enter = [&] {
         const std::vector<std::string> &recentNotifs {notif::getRecentNotifications()};
         if (recentNotifs.size() > 0) {
-            notif::setNotification(notif::getRecentNotifications().at(recentNotifSelected));
+            notif::setNotification(recentNotifs.at(recentNotifSelected));
             notif::copyNotice();
         }
     };
@@ -961,6 +975,144 @@ bool ui::mainMenu() {
         }
     )};
     
+    // Import students list modal.
+    std::string importInputContent {std::filesystem::current_path()};
+    std::string importNameCol {"Name"};
+    std::string importPswdCol {"Password"};
+    std::string importPrivCol {"Privileges"};
+    bool importPrivColEnabled {false};
+    ftxui::Component cancelImportButton {ftxui::Button(
+        "Cancel", [&] {importModalShown = false;}, ftxui::ButtonOption::Ascii()
+    )};
+    ftxui::Component confirmImportButton {ftxui::Button("Import", [&] {
+        std::atomic_bool spin {true};
+        std::thread spinnerThread {asyncDisplaySpinner("Importing students list...", spin)};
+
+        try {
+            if (!SData::importStudentsList(
+                importInputContent, 
+                importNameCol, 
+                importPswdCol, 
+                importPrivCol, 
+                importPrivColEnabled
+            )) {
+                stopAsyncDisplaySpinner(spinnerThread, spin);
+                return;
+            }
+        } catch (const std::exception &e) {
+            notif::notify("Failed to import students list for an unknown reason.");
+            
+            log::logExceptionWarning(e);
+            
+            stopAsyncDisplaySpinner(spinnerThread, spin);
+            return; // Stay in the import modal.
+        }
+        
+        // Recreate the student pane.
+        // const std::unordered_map<uuids::uuid, SData::Student> &studentMap {
+        //     SData::studentsData->get_students()
+        // };
+        // const int studentCount {static_cast<int>(studentMap.size())};
+        
+        studentBoxes.clear();
+        // studentBoxes.reserve(studentCount);
+        // u_studentBoxStates = std::make_unique<bool []>(studentCount);
+        // p_studentBoxStates = u_studentBoxStates.get();
+        
+        // createPaneBoxes(
+        //     studentMap, 
+        //     selectedStudentUUIDS, 
+        //     p_studentBoxStates, 
+        //     studentBoxes, 
+        //     titleBarMenusShown, 
+        //     lastTitleBarMenuIdx, 
+        //     UData::uiData->get_alwaysShowStudentUUIDs()
+        // );
+        
+        // studentPane = studentBoxes.empty() 
+        //     ? ftxui::Renderer([] {return ftxui::text("No students to display.");}) 
+        //     : ftxui::Container::Vertical(studentBoxes);
+
+        notif::notify("Successfully imported students list.");
+
+        stopAsyncDisplaySpinner(spinnerThread, spin);
+        importModalShown = false;
+    }, ftxui::ButtonOption::Ascii())};
+    ftxui::InputOption importInputOptions {ftxui::InputOption::Default()};
+    ftxui::Elements autoCompletePaths {};
+    importInputOptions.on_change = [&] {
+        try {
+            autoCompletePaths.clear();
+            std::filesystem::path dirPath {importInputContent};
+            std::filesystem::directory_iterator dirIter {dirPath.parent_path()};
+            for (const std::filesystem::directory_entry &dirEntry : dirIter) {
+                autoCompletePaths.push_back(ftxui::text(dirEntry.path()));
+            }
+        } catch (const std::exception &e) {
+            // Do nothing.
+        }
+    };
+    ftxui::Component importInput {makeInput(
+        importInputContent, "i.e. path/to/list.csv", {}, importInputOptions
+    )};
+    ftxui::Component importNameColInput {makeInput(importNameCol, "i.e. Name")};
+    ftxui::Component importPswdColInput {makeInput(importPswdCol, "i.e. Password")};
+    ftxui::Component importPrivColInput {makeInput(importPrivCol, "i.e. Privileges")};
+    ftxui::Component privColEnableBox {ftxui::Checkbox(
+        "Enable", &importPrivColEnabled
+    )};
+    ftxui::Component importModal {ftxui::Renderer(
+        ftxui::Container::Vertical({
+            importInput, 
+            ftxui::Container::Vertical({
+                importNameColInput, importPswdColInput, importPrivColInput, privColEnableBox
+            }), 
+            ftxui::Container::Horizontal({
+                cancelImportButton, confirmImportButton
+            })
+        }), 
+        [&] {
+            ftxui::Dimensions dims {getDimensions()};
+            ftxui::Element importPrivColInputElem {importPrivColInput->Render()};
+            if (!importPrivColEnabled) {
+                importPrivColInputElem |= ftxui::dim;
+            }
+            return ftxui::vbox(
+                ftxui::vbox(
+                    ftxui::hbox(ftxui::text("CSV File Path: "), importInput->Render()), 
+                    ftxui::vbox(autoCompletePaths) | ftxui::flex_shrink, 
+                    ftxui::vbox(
+                        ftxui::hbox(
+                            ftxui::text("Name Column: "), importNameColInput->Render()
+                        ), 
+                        ftxui::hbox(
+                            ftxui::text("Password Column :"), importPswdColInput->Render()
+                        ), 
+                        ftxui::hbox(
+                            ftxui::text("Privileges Column (0 --> none, 1 --> elevated): "), 
+                            importPrivColInputElem, 
+                            privColEnableBox->Render()
+                        )
+                    )
+                ) | ftxui::flex_shrink | ftxui::flex, 
+                ftxui::separator(), 
+                ftxui::hbox(
+                    cancelImportButton->Render() 
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | ftxui::color(ftxui::Color::Red), 
+                    confirmImportButton->Render()
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | ftxui::color(ftxui::Color::GreenYellow)
+                )
+            ) 
+                | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, dims.dimx * 0.9) 
+                | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, dims.dimy * 0.9) 
+                | ftxui::border;
+        }
+    )};
+    
     ftxui::Component app {ftxui::Renderer(
         mainScreen, 
         [&] {
@@ -977,6 +1129,7 @@ bool ui::mainMenu() {
     app |= ftxui::Modal(exitModal, &exitModalShown);
     app |= ftxui::Modal(settingsModal, &settingsModalShown);
     app |= ftxui::Modal(recentNotifsModal, &recentNotifsModalShown);
+    app |= ftxui::Modal(importModal, &importModalShown);
     app |= ftxui::Modal(notifModal, &notif::getNotice());
 
     appScreen.Loop(app);
@@ -1008,6 +1161,10 @@ static std::thread asyncDisplaySpinner(const std::string &msg, std::atomic_bool 
         }
         DLOG_F(INFO, "Spinner thread stopped.");
     }};
+}
+static void stopAsyncDisplaySpinner(std::thread &spinnerThread, std::atomic_bool &spin) {
+    spin = false;
+    spinnerThread.join();
 }
 
 static ftxui::Element inputTransformCustom(ftxui::InputState state) {
@@ -1188,6 +1345,20 @@ static void createPaneBoxes(
 
 static ftxui::Dimensions getDimensions() {
     return ftxui::Terminal::Size();
+}
+static ftxui::Component makeInput(
+    std::string &content, 
+    std::string placeholder, 
+    ftxui::Closure on_enter, 
+    ftxui::InputOption base
+) {
+    ftxui::InputOption inputOptions {base};
+    inputOptions.content = &content;
+    inputOptions.multiline = false;
+    inputOptions.on_enter = on_enter;
+    inputOptions.placeholder = placeholder;
+    inputOptions.transform = inputTransformCustom;
+    return ftxui::Input(inputOptions);
 }
 
 }
