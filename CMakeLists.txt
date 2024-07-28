@@ -107,6 +107,19 @@ if(NOT csv-parser_POPULATED)
     FetchContent_Populate(csv-parser)
     add_subdirectory(${csv-parser_SOURCE_DIR} ${csv-parser_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
+# LIBARCHIVE ------------------
+FetchContent_Declare(libarchive
+    GIT_REPOSITORY https://github.com/libarchive/libarchive.git
+    GIT_TAG v3.7.4
+)
+
+FetchContent_GetProperties(libarchive)
+
+if(NOT libarchive_POPULATED)
+    message(STATUS "Fetching libarchive...")
+    FetchContent_Populate(libarchive)
+    add_subdirectory(${libarchive_SOURCE_DIR} ${libarchive_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 # -----------------------------
 
 add_executable(instruct
@@ -119,10 +132,10 @@ add_executable(instruct
     src/ui.cpp
 )
 
-# For some reason cpp-httplib and csv-parser 
-# need be added manually and have other strange config issues.
+# Some libraries need be added manually...
 target_include_directories(instruct PRIVATE src ${cpp-httplib_SOURCE_DIR})
 target_include_directories(instruct PRIVATE src "${csv-parser_SOURCE_DIR}/single_include")
+target_include_directories(instruct PRIVATE src "${libarchive_SOURCE_DIR}/libarchive")
 
 target_link_libraries(instruct
     PRIVATE ftxui::screen
@@ -134,6 +147,7 @@ target_link_libraries(instruct
     # PRIVATE cpp-httplib # Single header file.
     PRIVATE stduuid # Just headers.
     # PRIVATE csv-parser # Single header file.
+    # PRIVATE libarchive
     PRIVATE ${CMAKE_DL_LIBS}
 )
 
