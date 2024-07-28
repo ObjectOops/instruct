@@ -138,9 +138,14 @@ add_executable(instruct
 )
 
 # Some libraries need be added manually...
-target_include_directories(instruct PRIVATE src ${cpp-httplib_SOURCE_DIR})
-target_include_directories(instruct PRIVATE src "${csv-parser_SOURCE_DIR}/single_include")
-target_include_directories(instruct PRIVATE src "${libarchive_SOURCE_DIR}/libarchive")
+target_include_directories(instruct
+    PRIVATE src
+    PRIVATE ${cpp-httplib_SOURCE_DIR}
+    PRIVATE "${csv-parser_SOURCE_DIR}/single_include"
+    PRIVATE "${libarchive_SOURCE_DIR}/libarchive"
+)
+
+find_package(ZLIB REQUIRED)
 
 target_link_libraries(instruct
     PRIVATE ftxui::screen
@@ -152,8 +157,9 @@ target_link_libraries(instruct
     # PRIVATE cpp-httplib # Single header file.
     PRIVATE stduuid # Just headers.
     # PRIVATE csv-parser # Single header file.
-    # PRIVATE libarchive
+    PRIVATE "${libarchive_BINARY_DIR}/libarchive/libarchive.a"
     PRIVATE ${CMAKE_DL_LIBS}
+    PRIVATE ZLIB::ZLIB
 )
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
