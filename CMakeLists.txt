@@ -114,11 +114,16 @@ FetchContent_Declare(libarchive
 )
 
 FetchContent_GetProperties(libarchive)
-
 if(NOT libarchive_POPULATED)
     message(STATUS "Fetching libarchive...")
     FetchContent_Populate(libarchive)
+    
+    cmake_policy(PUSH)
+    set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)
+    
     add_subdirectory(${libarchive_SOURCE_DIR} ${libarchive_BINARY_DIR} EXCLUDE_FROM_ALL)
+    
+    cmake_policy(POP)
 endif()
 # -----------------------------
 
