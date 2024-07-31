@@ -12,13 +12,7 @@
 				"kind": "build",
 				"isDefault": true
 			},
-			"problemMatcher": {
-				"base": "$gcc", 
-				"fileLocation": [
-					"relative", 
-					"${workspaceRoot}/src"
-				]
-			},
+			"problemMatcher": "$gcc",
 			"detail": "CMake template build task"
 		},
 		{
