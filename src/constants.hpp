@@ -1,9 +1,11 @@
 #ifndef INSTRUCT_CONSTANTS_H
 #define INSTRUCT_CONSTANTS_H
 
+#include <unordered_map>
 #include <filesystem>
 #include <string>
 #include <chrono>
+#include <vector>
 
 #include "ftxui/component/component_options.hpp"
 
@@ -15,7 +17,8 @@ namespace instruct::constants {
     #endif
     
     inline const std::filesystem::path DATA_DIR {"instruct_data"};
-    inline const std::filesystem::path LOG_DIR {"logs"};
+    inline const std::filesystem::path LOG_DIR {"instruct_logs"};
+    inline const std::filesystem::path OPENVSCODE_SERVER_DIR {DATA_DIR / "openvscode-server"};
     
     inline const std::filesystem::path INSTRUCT_LOG_DIR {LOG_DIR / "instruct.log"};
 
@@ -26,7 +29,18 @@ namespace instruct::constants {
 
     inline constexpr int MAX_INSTRUCTOR_PASSWORD_LENGTH = 16;
     
+    inline const std::string OPENVSCODE_SERVER_HOST {"https://github.com"};
+    inline const std::string OPENVSCODE_SERVER_ROUTE_FORMAT {"/gitpod-io/openvscode-server/releases/download/openvscode-server-${VERSION}/openvscode-server-${VERSION}-linux-${PLATFORM}.tar.gz"};
     inline const std::string OPENVSCODE_SERVER_VERSION_DEFAULT {"v1.79.2"};
+    inline const std::filesystem::path OPENVSCODE_SERVER_ARCHIVE {
+        OPENVSCODE_SERVER_DIR / "openvscode-server.tar.gz"
+    };
+    inline const std::vector<std::string> OPENVSCODE_SERVER_PLATFORM {
+        "arm64", "armhf", "x64"
+    };
+    inline const std::unordered_map<std::string, std::string> OPENVSCODE_SERVER_HASHES {
+        {"v1.79.2", "<placeholder hash>"}
+    };
         
     inline const int ASYNC_DISPLAY_SPINNER_TYPE {15};
     inline const std::chrono::milliseconds ASYNC_DISPLAY_SPINNER_INTERVAL {64};

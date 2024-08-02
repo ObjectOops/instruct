@@ -1,7 +1,9 @@
 #include <exception>
 #include <typeinfo>
+#include <fstream>
 #include <thread>
 #include <random>
+// #include <vector>
 #include <tuple>
 
 #include "picosha2.h"
@@ -9,6 +11,7 @@
 #include "httplib.h"
 
 #include "notification.hpp"
+#include "constants.hpp"
 #include "security.hpp"
 #include "logging.hpp"
 #include "setup.hpp"
@@ -29,7 +32,7 @@ bool sec::instanceActive() {
     bool isGood {res.error() != httplib::Error::Connection};
     
     if (isGood && res->body != ALIVE_CODE) {
-        LOG_F(WARNING, ("Detected an unknown process using port " + port + ".").c_str());
+        LOG_F(WARNING, "%s", ("Detected an unknown process using port " + port + ".").c_str());
     }
     
     return isGood;
@@ -53,8 +56,8 @@ bool sec::createInstance() {
         worker.detach();
     } catch (const std::exception &e) {
         LOG_F(ERROR, "Failed to create instance. Exception: %s", e.what());
-        LOG_F(ERROR, typeid(e).name());
-        LOG_F(ERROR, e.what());
+        LOG_F(ERROR, "%s", typeid(e).name());
+        LOG_F(ERROR, "%s", e.what());
         return false;
     }
     return true;
@@ -107,6 +110,22 @@ void sec::updateStudentPswd(
     SData::Student &student {studentMap.at(studentUUID)};
     student.pswdSHA256 = studentPswdHash;
     student.pswdSalt = studentPswdSalt;
+}
+
+bool sec::verifyOVSCSTarball(const std::string &ovscsVersion) {
+    try {
+        std::ifstream fin {constants::OPENVSCODE_SERVER_ARCHIVE, std::ios::binary};
+        std::string hash {picosha2::hash256_hex_string(
+            std::istreambuf_iterator<char> {fin}, 
+            std::istreambuf_iterator<char> {}
+        )};
+        fin.close();
+        return constants::OPENVSCODE_SERVER_HASHES.count(ovscsVersion) != 0 
+            && hash == constants::OPENVSCODE_SERVER_HASHES.at(ovscsVersion);
+    } catch (const std::exception &e) {
+        log::logExceptionWarning(e);
+        return false;
+    }
 }
 
 }

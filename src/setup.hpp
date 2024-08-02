@@ -3,6 +3,7 @@
 
 #include <system_error>
 #include <string>
+#include <atomic>
 
 namespace instruct::setup {
     struct SetupError {
@@ -21,6 +22,14 @@ namespace instruct::setup {
     bool setDefaults();
 
     void deleteDataDir();
+    
+    bool deleteOVSCSDirContents();
+    
+    bool downloadOVSCS(
+        const std::string &, std::atomic<uint64_t> &, std::atomic<uint64_t> &, int
+    );
+    
+    bool unpackOVSCSTarball();
 }
 
 #endif

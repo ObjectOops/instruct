@@ -42,6 +42,7 @@ namespace instruct {
         // Throws `YAML::Exception` on failure.
         Data() = default;
         Data(const std::filesystem::path &);
+        virtual ~Data() = default;
         
         // Throws `std::ios_base::failure` on failure.
         virtual void saveData();
@@ -63,6 +64,7 @@ namespace instruct {
         DATA_ATTR(std::string, pswdSHA256)
         DATA_ATTR(std::string, pswdSalt)
         DATA_ATTR(bool, firstTime)
+        DATA_ATTR(std::string, ovscsVersion);
         
         inline static std::unique_ptr<IData> instructorData;
     };

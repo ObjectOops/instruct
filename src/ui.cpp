@@ -58,9 +58,9 @@ To avoid a loss of information, restart the instruct setup.
 Then, manually resolve your data from `)" 
 + std::string {constants::DATA_DIR} + R"(_copy`.
 See the log file for more details.)"};
-            LOG_F(ERROR, msg.c_str());
-            LOG_F(ERROR, typeid(e).name());
-            LOG_F(ERROR, e.what());
+            LOG_F(ERROR, "%s", msg.c_str());
+            LOG_F(ERROR, "%s", typeid(e).name());
+            LOG_F(ERROR, "%s", e.what());
             std::cerr << msg << '\n';
         } catch (const std::exception &e2) {
             std::string msg {R"(Possible data corruption detected.
@@ -68,9 +68,9 @@ To avoid a loss of information, backup `)" + std::string {constants::DATA_DIR}
 + R"(` and restart the instruct setup.
 Then, manually resolve your data from the backup.
 See the log file for more details.)"};
-            LOG_F(ERROR, msg.c_str());
-            LOG_F(ERROR, typeid(e).name());
-            LOG_F(ERROR, e.what());
+            LOG_F(ERROR, "%s", msg.c_str());
+            LOG_F(ERROR, "%s", typeid(e).name());
+            LOG_F(ERROR, "%s", e.what());
             std::cerr << msg << '\n';
         }
         return false;
@@ -86,9 +86,9 @@ std::tuple<bool, bool> ui::saveAllHandled() {
 Please manually resolve your data from `)" 
 + std::string {constants::DATA_DIR} + R"(`.
 See the log file for more details.)"};
-        LOG_F(ERROR, msg.c_str());
-        LOG_F(ERROR, typeid(e).name());
-        LOG_F(ERROR, e.what());
+        LOG_F(ERROR, "%s", msg.c_str());
+        LOG_F(ERROR, "%s", typeid(e).name());
+        LOG_F(ERROR, "%s", e.what());
         std::cerr << msg << '\n';
         return std::make_tuple(true, false);
     }
@@ -199,7 +199,7 @@ static bool instructSetup(const std::string &instructPswd) {
 
     ftxui::Elements progress {};
     auto displayProgress {[&] (std::string entry, bool errMsg = false) {
-        VLOG_F(errMsg ? loguru::Verbosity_ERROR : 1, entry.c_str());
+        VLOG_F(errMsg ? loguru::Verbosity_ERROR : 1, "%s", entry.c_str());
         progress.push_back(
             ftxui::paragraph(entry) 
             | (errMsg ? ftxui::color(ftxui::Color::Red) : ftxui::color(ftxui::Color::Default))
@@ -429,8 +429,11 @@ std::tuple<bool, bool> ui::mainMenu() {
     // Create title bar menus.
     const int titleBarMenuCount {static_cast<int>(titleBarMenuContents.size())};
     ftxui::Components titleBarMenus {};
-    bool titleBarMenusShown [titleBarMenuCount] {};
-    createTitleBarMenus(titleBarMenuContents, titleBarMenus, titleBarMenusShown);
+    std::unique_ptr<bool []> u_titleBarMenusShown {
+        std::make_unique<bool []>(titleBarMenuCount)
+    };
+    bool *p_titleBarMenusShown {u_titleBarMenusShown.get()};
+    createTitleBarMenus(titleBarMenuContents, titleBarMenus, p_titleBarMenusShown);
 
     // The status bar next to the title bar menus that contains 
     // the application status and version.
@@ -477,7 +480,7 @@ std::tuple<bool, bool> ui::mainMenu() {
         }), 
         [&] {
             collapseInactiveTitleBarMenus(
-                titleBarMenuCount, titleBarMenusShown, lastTitleBarMenuIdx
+                titleBarMenuCount, p_titleBarMenusShown, lastTitleBarMenuIdx
             );
             
             /*
@@ -544,7 +547,7 @@ std::tuple<bool, bool> ui::mainMenu() {
         selectedStudentUUIDS, 
         p_studentBoxStates, 
         studentBoxes, 
-        titleBarMenusShown, 
+        p_titleBarMenusShown, 
         lastTitleBarMenuIdx, 
         UData::uiData->get_alwaysShowStudentUUIDs()
     );
@@ -570,7 +573,7 @@ std::tuple<bool, bool> ui::mainMenu() {
         TData::testsData->get_selectedTestUUIDs(), 
         p_testBoxStates, 
         testBoxes, 
-        titleBarMenusShown, 
+        p_titleBarMenusShown, 
         lastTitleBarMenuIdx, 
         UData::uiData->get_alwaysShowTestUUIDs()
     );
@@ -1186,6 +1189,122 @@ std::tuple<bool, bool> ui::mainMenu() {
         }
     )};
     
+    // Install OpenVsCode Server modal.
+    std::string installOVSCSContent {constants::OPENVSCODE_SERVER_VERSION_DEFAULT};
+    ftxui::Component installOVSCSInput {makeInput(
+        installOVSCSContent, 
+        "i.e. " + constants::OPENVSCODE_SERVER_VERSION_DEFAULT, 
+        {}
+    )};
+    std::atomic_bool installOVSCSInProgress {false};
+    ftxui::Component cancelInstallOVSCSButton {ftxui::Button("Cancel", [&] {
+        if (!installOVSCSInProgress) {
+            installOVSCSModalShown = false;
+        }
+    }, ftxui::ButtonOption::Ascii())};
+    int selectedPlatform {};
+    ftxui::Component selectedPlatformToggle(ftxui::Toggle(
+        &constants::OPENVSCODE_SERVER_PLATFORM, &selectedPlatform
+    ));
+    std::atomic<uint64_t> installOVSCSDownloadProgress {0};
+    std::atomic<uint64_t> installOVSCSDownloadTotal {1};
+    std::thread installThread;
+    ftxui::Component confirmInstallOVSCSButton {ftxui::Button("Install", [&] {
+        installThread = std::thread {[&] {
+            DLOG_F(INFO, "Install thread started.");
+            installOVSCSInProgress = true;
+            if (!setup::deleteOVSCSDirContents()) {
+                notif::notify(
+                    "The contents of `" 
+                    + constants::OPENVSCODE_SERVER_DIR.string() 
+                    + "` must be deleted."
+                );
+                installOVSCSInProgress = false;
+                return;
+            }
+            if (
+                !setup::downloadOVSCS(
+                    installOVSCSContent, 
+                    installOVSCSDownloadProgress, 
+                    installOVSCSDownloadTotal, 
+                    selectedPlatform
+                )
+            ) {
+                setup::deleteOVSCSDirContents();
+                notif::notify(
+                    "A problem occurred when attempting to download OpenVsCode Server " 
+                    + installOVSCSContent + "."
+                );
+                installOVSCSInProgress = false;
+                return;
+            }
+            // if (!sec::verifyOVSCSTarball(installOVSCSContent)) {
+            //     setup::deleteOVSCSDirContents();
+            //     notif::notify("The installed version of OpenVsCode Server could not be verified.");
+                // installOVSCSInProgress = false;
+            //     return;
+            // }
+            // if (!setup::unpackOVSCSTarball()) {
+            //     setup::deleteOVSCSDirContents();
+            //     notif::notify("Failed to unpack OpenVsCode Server archive.");
+                // installOVSCSInProgress = false;
+            //     return;
+            // }
+            // try {
+            //     IData::instructorData->set_ovscsVersion(installOVSCSContent);
+            //     notif::notify("Installation successful.");
+            // } catch (const std::exception &e) {
+            //     notif::notify("Installation successful. OpenVsCode Server version not saved.");
+            // }
+            installOVSCSInProgress = false;
+        }};
+    }, ftxui::ButtonOption::Ascii())};
+    ftxui::Component installOVSCSModal {ftxui::Renderer(
+        ftxui::Container::Vertical({
+            installOVSCSInput, 
+            selectedPlatformToggle, 
+            ftxui::Container::Horizontal({
+                cancelInstallOVSCSButton, confirmInstallOVSCSButton
+            })
+        }), 
+        [&] {
+            if (!installOVSCSInProgress && installThread.joinable()) {
+                DLOG_F(INFO, "Install thread joined.");
+                installThread.join();
+            }
+            return ftxui::vbox(
+                installOVSCSInput->Render(), 
+                ftxui::hbox(ftxui::text("Platform: "), selectedPlatformToggle->Render()), 
+                constants::OPENVSCODE_SERVER_HASHES.count(installOVSCSContent) == 1 
+                    ? ftxui::emptyElement() 
+                    : ftxui::text("Warning: Cannot verify this distribution.") 
+                        | ftxui::color(ftxui::Color::Orange1), 
+                installOVSCSInProgress 
+                    ? ftxui::hbox(ftxui::gauge(static_cast<float>(
+                        installOVSCSDownloadProgress) / installOVSCSDownloadTotal
+                    ), ftxui::text(
+                        std::to_string(installOVSCSDownloadProgress / 1000) 
+                        + " KB / " + std::to_string(installOVSCSDownloadTotal / 1000) + " KB")) 
+                    : ftxui::emptyElement(), 
+                ftxui::separator(), 
+                ftxui::hbox(
+                    cancelInstallOVSCSButton->Render() 
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | ftxui::color(ftxui::Color::Red), 
+                    confirmInstallOVSCSButton->Render() 
+                        | ftxui::hcenter 
+                        | ftxui::border 
+                        | (installOVSCSInProgress 
+                            ? ftxui::dim
+                            : ftxui::color(ftxui::Color::GreenYellow))
+                )
+            )
+                | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, getDimensions().dimx * 0.75) 
+                | ftxui::border;
+        }
+    )};
+    
     ftxui::Component app {ftxui::Renderer(
         mainScreen, 
         [&] {
@@ -1204,6 +1323,7 @@ std::tuple<bool, bool> ui::mainMenu() {
     app |= ftxui::Modal(recentNotifsModal, &recentNotifsModalShown);
     app |= ftxui::Modal(importModal, &importModalShown);
     app |= ftxui::Modal(exportModal, &exportModalShown);
+    app |= ftxui::Modal(installOVSCSModal, &installOVSCSModalShown);
     app |= ftxui::Modal(notifModal, &notif::getNotice());
 
     appScreen.Loop(app);

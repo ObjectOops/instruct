@@ -18,6 +18,8 @@ namespace instruct::sec {
         const uuids::uuid &, 
         const std::string &
     );
+    
+    bool verifyOVSCSTarball(const std::string &);
 }
 
 #endif

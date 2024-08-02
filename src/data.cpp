@@ -33,6 +33,7 @@ namespace keys {
     static const std::string DISPLAY_NAME {"display_name"};
     static const std::string ELEVATED_PRIVILEGES {"elevated_privileges"};
     static const std::string STUDENTS {"students"};
+    static const std::string OPENVSCODE_SERVER_VERSION {"openvscode_server_version"};
     
     // Test keys.
     static const std::string SELECTED_TESTS {"selected_test_uuids"};
@@ -105,6 +106,7 @@ IData::IData(const std::filesystem::path &filePath) : Data {filePath} {
     pswdSHA256 = yaml[keys::PASSWORD_SHA256].as<std::string>();
     pswdSalt = yaml[keys::PASSWORD_SALT].as<std::string>();
     firstTime = yaml[keys::FIRST_TIME].as<bool>();
+    ovscsVersion = yaml[keys::OPENVSCODE_SERVER_VERSION].as<std::string>();
 }
 
 void IData::saveData() {
@@ -114,6 +116,7 @@ void IData::saveData() {
     yaml[keys::PASSWORD_SHA256] = pswdSHA256;
     yaml[keys::PASSWORD_SALT] = pswdSalt;
     yaml[keys::FIRST_TIME] = firstTime;
+    yaml[keys::OPENVSCODE_SERVER_VERSION] = ovscsVersion;
     
     Data::saveData();
 }

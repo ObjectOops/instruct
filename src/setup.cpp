@@ -3,10 +3,18 @@
 #include <typeinfo>
 #include <fstream>
 #include <memory>
+#include <regex>
 
 #include "loguru.hpp"
 
+#define CPPHTTPLIB_OPENSSL_SUPPORT
+#include "httplib.h"
+
+#include "archive_entry.h"
+#include "archive.h"
+
 #include "constants.hpp"
+#include "logging.hpp"
 #include "setup.hpp"
 #include "data.hpp"
 
@@ -27,8 +35,9 @@ bool setup::setupIncomplete() {
 
 bool setup::createDataDir() {
     bool success {
-        std::filesystem::create_directory(
-            constants::DATA_DIR, setupError.errCode
+        std::filesystem::create_directory(constants::DATA_DIR, setupError.errCode) 
+        && std::filesystem::create_directory(
+            constants::OPENVSCODE_SERVER_DIR, setupError.errCode
         )
     };
     if (!success) {
@@ -69,6 +78,7 @@ bool setup::setDefaults() {
         IData::instructorData->set_authPort(8000);
         IData::instructorData->set_codePort(3000);
         IData::instructorData->set_firstTime(true);
+        IData::instructorData->set_ovscsVersion("none");
         DLOG_F(INFO, "Saved default data.");
 
         DLOG_F(INFO, "Assigning default students data.");
@@ -131,6 +141,152 @@ bool setup::setDefaults() {
 void setup::deleteDataDir() {
     DLOG_F(INFO, "Deleted data dir.");
     std::filesystem::remove_all(constants::DATA_DIR);
+}
+
+bool setup::deleteOVSCSDirContents() {
+    try {
+        std::filesystem::remove_all(constants::OPENVSCODE_SERVER_DIR);
+        std::filesystem::create_directory(constants::OPENVSCODE_SERVER_DIR);
+        return true;
+    } catch (const std::exception &e) {
+        log::logExceptionWarning(e);
+        return false;
+    }
+}
+
+bool setup::downloadOVSCS(
+    const std::string &ovscsVersion, 
+    std::atomic<uint64_t> &progress, 
+    std::atomic<uint64_t> &totalProgress, 
+    int selectedPlatform
+) {
+    try {
+        std::string route {constants::OPENVSCODE_SERVER_ROUTE_FORMAT};
+        route = std::regex_replace(route, std::regex {"\\$\\{VERSION}"}, ovscsVersion);
+        route = std::regex_replace(
+            route, 
+            std::regex {"\\$\\{PLATFORM}"}, 
+            constants::OPENVSCODE_SERVER_PLATFORM.at(selectedPlatform)
+        );
+        
+        DLOG_F(
+            INFO, 
+            "Attempting download from %s%s.", 
+            constants::OPENVSCODE_SERVER_HOST.c_str(), 
+            route.c_str()
+        );
+        
+        httplib::SSLClient client {constants::OPENVSCODE_SERVER_HOST};
+        httplib::Result res;
+        client.set_follow_location(true);
+        
+        do {
+            std::ofstream fout {constants::OPENVSCODE_SERVER_ARCHIVE};
+            res = client.Get(route, 
+                [&] (const char *data, size_t dataLen) {
+                    fout.write(data, dataLen);
+                    return true;
+                }, 
+                [&] (uint64_t len, uint64_t total) {
+                    progress = len;
+                    totalProgress = total;
+                    return true;
+                }
+            );
+            fout.close();
+        } while (res->status == 301);
+
+        return true;
+    } catch (const std::exception &e) {
+        log::logExceptionWarning(e);
+        return false;
+    }
+}
+
+static bool extract(const char *);
+static int copy_data(archive *, archive *);
+
+bool setup::unpackOVSCSTarball() {
+    if (!extract(constants::OPENVSCODE_SERVER_ARCHIVE.c_str())) {
+        LOG_F(ERROR, "Archive extraction failed.");
+        return false;
+    }
+    return true;
+}
+
+// Reference: 
+// https://github.com/libarchive/libarchive/
+// blob/586a9645102c87d83919015a9e2e49aec7d47a63/examples/untar.c
+
+static bool extract(const char *filename) {
+	archive *a;
+	archive *ext;
+	archive_entry *entry;
+	int r;
+    
+    auto cleanArchive {[&] {
+        archive_read_close(a);
+        archive_read_free(a);
+        
+        archive_write_close(ext);
+        archive_write_free(ext);
+    }};
+
+	a = archive_read_new();
+	ext = archive_write_disk_new();
+	archive_write_disk_set_options(ext, ARCHIVE_EXTRACT_TIME);
+	archive_read_support_format_tar(a);
+    archive_read_support_filter_gzip(a);
+
+	if ((r = archive_read_open_filename(a, filename, 10240))) {
+		LOG_F(ERROR, "archive_read_open_filename() %s", archive_error_string(a));
+        cleanArchive();
+        return false;
+    }
+    
+	while ((r = archive_read_next_header(a, &entry)) == ARCHIVE_OK) {
+        LOG_F(INFO, "Extracting: %s", archive_entry_pathname(entry));
+        r = archive_write_header(ext, entry);
+        if (r != ARCHIVE_OK) {
+            LOG_F(WARNING, "archive_write_header() %s", archive_error_string(ext));
+        } else {
+            copy_data(a, ext);
+            r = archive_write_finish_entry(ext);
+            if (r != ARCHIVE_OK) {
+                LOG_F(ERROR, "archive_write_finish_entry() %s", archive_error_string(ext));
+                cleanArchive();
+                return false;
+            }
+        }
+	}
+    if (r != ARCHIVE_OK && r != ARCHIVE_EOF) {
+        LOG_F(ERROR, "archive_read_next_header() %s", archive_error_string(a));
+        cleanArchive();
+        return false;
+    }
+    
+    cleanArchive();
+
+    return true;
+}
+
+static int copy_data(struct archive *ar, struct archive *aw) {
+	int r;
+	const void *buff;
+	size_t size;
+	int64_t offset;
+
+	while ((r = archive_read_data_block(ar, &buff, &size, &offset)) == ARCHIVE_OK) {
+		r = archive_write_data_block(aw, buff, size, offset);
+		if (r != ARCHIVE_OK) {
+			LOG_F(WARNING, "archive_write_data_block() %s", archive_error_string(aw));
+			return r;
+		}
+	}
+    if (r != ARCHIVE_OK) {
+        return r;
+    }
+    return ARCHIVE_OK;
 }
 
 }
