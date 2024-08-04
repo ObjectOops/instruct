@@ -53,8 +53,14 @@ FetchContent_Declare(cpp-httplib
     GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
     GIT_TAG v0.16.0
 )
+set(HTTPLIB_REQUIRE_OPENSSL ON) # Enable OpenSSL support.
 set(HTTPLIB_USE_OPENSSL_IF_AVAILABLE OFF) # Disable automatically including OpenSSL.
 set(HTTPLIB_USE_ZLIB_IF_AVAILABLE OFF) # Disable automatically including zlib.
+find_package(Python3)
+if(Python3_FOUND)
+    # Enable splitting the single header file into a header and source file.
+    set(HTTPLIB_COMPILE ON)
+endif()
 set(HTTPLIB_USE_BROTLI_IF_AVAILABLE OFF) # Disable automatically including brotli.
 set(HTTPLIB_INSTALL OFF) # Disable library installation target.
 # STDUUID ---------------------

@@ -3,11 +3,8 @@
 #include <typeinfo>
 #include <fstream>
 #include <memory>
-#include <regex>
 
 #include "loguru.hpp"
-
-#define CPPHTTPLIB_OPENSSL_SUPPORT
 #include "httplib.h"
 
 #include "archive_entry.h"
@@ -162,11 +159,25 @@ bool setup::downloadOVSCS(
 ) {
     try {
         std::string route {constants::OPENVSCODE_SERVER_ROUTE_FORMAT};
-        route = std::regex_replace(route, std::regex {"\\$\\{VERSION}"}, ovscsVersion);
-        route = std::regex_replace(
-            route, 
-            std::regex {"\\$\\{PLATFORM}"}, 
-            constants::OPENVSCODE_SERVER_PLATFORM.at(selectedPlatform)
+        auto findAndReplaceAll {[] (
+            std::string &str, 
+            std::string pat, 
+            const std::string &rep
+        ) {
+            std::size_t repLen {rep.length()};
+            std::size_t idx {};
+            while (true) {
+                idx = str.find(pat, idx);
+                if (idx == std::string::npos) {
+                    break;
+                }
+                str.replace(idx, repLen, rep);
+                idx += repLen;
+            }
+        }};
+        findAndReplaceAll(route, "${VERSION}", ovscsVersion);
+        findAndReplaceAll(
+            route, "${PLATFORM}", constants::OPENVSCODE_SERVER_PLATFORM.at(selectedPlatform)
         );
         
         DLOG_F(
