@@ -6,8 +6,6 @@
 #include <regex>
 
 #include "loguru.hpp"
-
-#define CPPHTTPLIB_OPENSSL_SUPPORT
 #include "httplib.h"
 
 #include "archive_entry.h"

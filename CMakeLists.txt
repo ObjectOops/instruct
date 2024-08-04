@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.16)
 
 project(instruct
     LANGUAGES CXX
@@ -89,6 +89,17 @@ add_executable(instruct
     src/main.cpp
     src/data.cpp
     src/ui.cpp
+)
+
+# Precompile large header files.
+target_compile_definitions(instruct
+    PRIVATE "CPPHTTPLIB_OPENSSL_SUPPORT"
+)
+target_precompile_headers(instruct
+    PRIVATE "\"httplib.h\""
+    PRIVATE "\"csv.hpp\""
+    PRIVATE "\"picosha2.h\""
+    PRIVATE "\"uuid.h\""
 )
 
 find_package(LibArchive REQUIRED)
