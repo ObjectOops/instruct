@@ -98,14 +98,13 @@ add_executable(instruct
 )
 
 # Precompile large header files.
-target_compile_definitions(instruct
-    PRIVATE "CPPHTTPLIB_OPENSSL_SUPPORT"
-)
 target_precompile_headers(instruct
-    PRIVATE "\"httplib.h\""
-    PRIVATE "\"csv.hpp\""
+    PRIVATE "\"yaml-cpp/yaml.h\""
     PRIVATE "\"picosha2.h\""
+    PRIVATE "\"loguru.hpp\""
+    PRIVATE "\"httplib.h\""
     PRIVATE "\"uuid.h\""
+    PRIVATE "\"csv.hpp\""
 )
 
 find_package(LibArchive REQUIRED)
