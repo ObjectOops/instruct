@@ -164,15 +164,15 @@ bool setup::downloadOVSCS(
             std::string pat, 
             const std::string &rep
         ) {
-            std::size_t repLen {rep.length()};
+            std::size_t patLen {pat.length()};
             std::size_t idx {};
             while (true) {
                 idx = str.find(pat, idx);
                 if (idx == std::string::npos) {
                     break;
                 }
-                str.replace(idx, repLen, rep);
-                idx += repLen;
+                str.replace(idx, patLen, rep);
+                idx += patLen;
             }
         }};
         findAndReplaceAll(route, "${VERSION}", ovscsVersion);
@@ -187,27 +187,32 @@ bool setup::downloadOVSCS(
             route.c_str()
         );
         
+        bool downloaded {false};
         httplib::SSLClient client {constants::OPENVSCODE_SERVER_HOST};
-        httplib::Result res;
         client.set_follow_location(true);
         
-        do {
-            std::ofstream fout {constants::OPENVSCODE_SERVER_ARCHIVE};
-            res = client.Get(route, 
-                [&] (const char *data, size_t dataLen) {
-                    fout.write(data, dataLen);
-                    return true;
-                }, 
-                [&] (uint64_t len, uint64_t total) {
-                    progress = len;
-                    totalProgress = total;
-                    return true;
-                }
-            );
-            fout.close();
-        } while (res->status == 301);
+        std::ofstream fout {constants::OPENVSCODE_SERVER_ARCHIVE};
+        httplib::Result res {client.Get(route, 
+            [&] (const char *data, size_t dataLen) {
+                fout.write(data, dataLen);
+                return true;
+            }, 
+            [&] (uint64_t len, uint64_t total) {
+                progress = len;
+                totalProgress = total;
+                return true;
+            }
+        )};
+        if (res.error() != httplib::Error::Success) {
+            LOG_F(WARNING, "HTTPS GET error code: %d", static_cast<int>(res.error()));
+        } else if (res->status != httplib::StatusCode::OK_200) {
+            LOG_F(WARNING, "HTTPS GET status code: %d", res->status);
+        } else {
+            downloaded = true;
+        }
+        fout.close();
 
-        return true;
+        return downloaded;
     } catch (const std::exception &e) {
         log::logExceptionWarning(e);
         return false;
