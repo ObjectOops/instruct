@@ -71,6 +71,7 @@ bool setup::populateDataDir() {
 bool setup::setDefaults() {
     try {
         DLOG_F(INFO, "Assigning default instructor data.");
+        IData::instructorData->set_instructVersion(constants::INSTRUCT_VERSION);
         IData::instructorData->set_authHost("0.0.0.0");
         IData::instructorData->set_authPort(8000);
         IData::instructorData->set_codePort(3000);
@@ -133,6 +134,39 @@ bool setup::setDefaults() {
         return false;
     }
     return true;
+}
+
+bool setup::locateCACerts() {
+    
+    // Reference: https://go.dev/src/crypto/x509/root_linux.go
+    // Copyright 2015 The Go Authors. All rights reserved.
+    // Use of this source code is governed by a BSD-style license.
+    std::filesystem::path knownPaths [] {
+        "/etc/ssl/certs/ca-certificates.crt",                // Debian/Ubuntu/Gentoo etc.
+        "/etc/pki/tls/certs/ca-bundle.crt",                  // Fedora/RHEL 6
+        "/etc/ssl/ca-bundle.pem",                            // OpenSUSE
+        "/etc/pki/tls/cacert.pem",                           // OpenELEC
+        "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", // CentOS/RHEL 7
+        "/etc/ssl/cert.pem"                                  // Alpine Linux
+    };
+    
+    for (std::filesystem::path &path : knownPaths) {
+        try {
+            if (std::filesystem::exists(path)) {
+                IData::instructorData->set_caCertPath(path);
+                DLOG_F(INFO, "Located CA certificates: %s", path.c_str());
+                return true;
+            }
+        } catch (const std::exception &e) {
+            setupError.exType = typeid(e).name();
+            setupError.exMsg = e.what();
+            break;
+        }
+    }
+    setupError.errCode = std::make_error_code(std::errc::io_error);
+    setupError.msg = "Failed to get CA certificates.";
+
+    return false;
 }
 
 void setup::deleteDataDir() {
