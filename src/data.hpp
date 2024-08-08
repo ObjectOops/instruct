@@ -45,7 +45,7 @@ namespace instruct {
         virtual ~Data() = default;
         
         // Throws `std::ios_base::failure` on failure.
-        virtual void saveData();
+        virtual void saveData() = 0;
 
         static void initEmpty();
         static void initAll();
@@ -58,13 +58,15 @@ namespace instruct {
         IData(const std::filesystem::path &);
         void saveData() override;
         
+        DATA_ATTR(std::string, instructVersion)
         DATA_ATTR(std::string, authHost)
         DATA_ATTR(int, authPort)
         DATA_ATTR(int, codePort)
         DATA_ATTR(std::string, pswdSHA256)
         DATA_ATTR(std::string, pswdSalt)
         DATA_ATTR(bool, firstTime)
-        DATA_ATTR(std::string, ovscsVersion);
+        DATA_ATTR(std::string, caCertPath)
+        DATA_ATTR(std::string, ovscsVersion)
         
         inline static std::unique_ptr<IData> instructorData;
     };

@@ -265,6 +265,12 @@ static bool instructSetup(const std::string &instructPswd) {
         return false;
     }
     
+    displayProgress("Locating system CA certificates.");
+    if (!handleStep(setup::locateCACerts())) {
+        setupFail();
+        return false;
+    }
+    
     displayProgress("Setting instructor password: " 
         + instructPswd + " length " + std::to_string(instructPswd.length()));
     if (!handleStep(sec::updateInstructPswd(instructPswd))) {

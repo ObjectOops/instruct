@@ -20,6 +20,8 @@ namespace instruct::setup {
     bool populateDataDir();
 
     bool setDefaults();
+    
+    bool locateCACerts();
 
     void deleteDataDir();
     

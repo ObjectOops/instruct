@@ -19,13 +19,18 @@
 namespace instruct {
 
 namespace keys {
-    // Instructor and student keys.
+    // Instructor keys.
+    static const std::string INSTRUCT_VERSION {"instruct_version"};
     static const std::string AUTH_HOST {"auth_host"};
     static const std::string AUTH_PORT {"auth_port"};
     static const std::string CODE_PORT {"code_port"};
     static const std::string PASSWORD_SHA256 {"password_sha256"};
     static const std::string PASSWORD_SALT {"password_salt"};
     static const std::string FIRST_TIME {"first_time"};
+    static const std::string CA_CERTIFICATES_PATH {"ca_certificates_path"};
+    static const std::string OPENVSCODE_SERVER_VERSION {"openvscode_server_version"};
+    
+    // Student keys.
     static const std::string CODE_PORTS {"code_ports"};
     static const std::string CODE_PORT_RANGE {"code_port_range"};
     static const std::string USE_RANDOM_PORTS {"use_random_ports"};
@@ -33,7 +38,6 @@ namespace keys {
     static const std::string DISPLAY_NAME {"display_name"};
     static const std::string ELEVATED_PRIVILEGES {"elevated_privileges"};
     static const std::string STUDENTS {"students"};
-    static const std::string OPENVSCODE_SERVER_VERSION {"openvscode_server_version"};
     
     // Test keys.
     static const std::string SELECTED_TESTS {"selected_test_uuids"};
@@ -100,22 +104,26 @@ void Data::saveAll() {
 }
 
 IData::IData(const std::filesystem::path &filePath) : Data {filePath} {
+    instructVersion = yaml[keys::INSTRUCT_VERSION].as<std::string>();
     authHost = yaml[keys::AUTH_HOST].as<std::string>();
     authPort = yaml[keys::AUTH_PORT].as<int>();
     codePort = yaml[keys::CODE_PORT].as<int>();
     pswdSHA256 = yaml[keys::PASSWORD_SHA256].as<std::string>();
     pswdSalt = yaml[keys::PASSWORD_SALT].as<std::string>();
     firstTime = yaml[keys::FIRST_TIME].as<bool>();
+    caCertPath = yaml[keys::CA_CERTIFICATES_PATH].as<std::string>();
     ovscsVersion = yaml[keys::OPENVSCODE_SERVER_VERSION].as<std::string>();
 }
 
 void IData::saveData() {
+    yaml[keys::INSTRUCT_VERSION] = instructVersion;
     yaml[keys::AUTH_HOST] = authHost;
     yaml[keys::AUTH_PORT] = authPort;
     yaml[keys::CODE_PORT] = codePort;
     yaml[keys::PASSWORD_SHA256] = pswdSHA256;
     yaml[keys::PASSWORD_SALT] = pswdSalt;
     yaml[keys::FIRST_TIME] = firstTime;
+    yaml[keys::CA_CERTIFICATES_PATH] = caCertPath;
     yaml[keys::OPENVSCODE_SERVER_VERSION] = ovscsVersion;
     
     Data::saveData();
