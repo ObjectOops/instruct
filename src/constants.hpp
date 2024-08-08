@@ -29,7 +29,7 @@ namespace instruct::constants {
 
     inline constexpr int MAX_INSTRUCTOR_PASSWORD_LENGTH = 16;
     
-    inline const std::string OPENVSCODE_SERVER_HOST {"https://github.com"};
+    inline const std::string OPENVSCODE_SERVER_HOST {"github.com"}; // Note: Do not specify scheme.
     inline const std::string OPENVSCODE_SERVER_ROUTE_FORMAT {"/gitpod-io/openvscode-server/releases/download/openvscode-server-${VERSION}/openvscode-server-${VERSION}-linux-${PLATFORM}.tar.gz"};
     inline const std::string OPENVSCODE_SERVER_VERSION_DEFAULT {"v1.79.2"};
     inline const std::filesystem::path OPENVSCODE_SERVER_ARCHIVE {

@@ -220,9 +220,10 @@ bool setup::downloadOVSCS(
             constants::OPENVSCODE_SERVER_HOST.c_str(), 
             route.c_str()
         );
-        
+                
         bool downloaded {false};
         httplib::SSLClient client {constants::OPENVSCODE_SERVER_HOST};
+        client.set_ca_cert_path(IData::instructorData->get_caCertPath());
         client.set_follow_location(true);
         
         std::ofstream fout {constants::OPENVSCODE_SERVER_ARCHIVE};
