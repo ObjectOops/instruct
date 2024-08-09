@@ -3,6 +3,7 @@
 #include <typeinfo>
 #include <fstream>
 #include <memory>
+#include <thread>
 
 #include "loguru.hpp"
 #include "httplib.h"
@@ -235,6 +236,7 @@ bool setup::downloadOVSCS(
             [&] (uint64_t len, uint64_t total) {
                 progress = len;
                 totalProgress = total;
+                std::this_thread::yield();
                 return true;
             }
         )};
@@ -296,7 +298,7 @@ static bool extract(const char *filename) {
     }
     
 	while ((r = archive_read_next_header(a, &entry)) == ARCHIVE_OK) {
-        LOG_F(INFO, "Extracting: %s", archive_entry_pathname(entry));
+        DLOG_F(1, "Extracting: %s", archive_entry_pathname(entry));
         r = archive_write_header(ext, entry);
         if (r != ARCHIVE_OK) {
             LOG_F(WARNING, "archive_write_header() %s", archive_error_string(ext));

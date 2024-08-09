@@ -1212,13 +1212,26 @@ std::tuple<bool, bool> ui::mainMenu() {
     ftxui::Component selectedPlatformToggle(ftxui::Toggle(
         &constants::OPENVSCODE_SERVER_PLATFORM, &selectedPlatform
     ));
+    std::vector<std::string> installOVSCSStageLabels {
+        "Preparing...", 
+        "Downloading...", 
+        "Verifying...", 
+        "Unpacking...", 
+        "Finalizing..."
+    };
+    std::atomic_int installOVSCSStage {-1};
     std::atomic<uint64_t> installOVSCSDownloadProgress {0};
     std::atomic<uint64_t> installOVSCSDownloadTotal {1};
     std::thread installThread;
     ftxui::Component confirmInstallOVSCSButton {ftxui::Button("Install", [&] {
+        if (installOVSCSInProgress) {
+            return;
+        }
         installThread = std::thread {[&] {
             DLOG_F(INFO, "Install thread started.");
             installOVSCSInProgress = true;
+            ++installOVSCSStage;
+            std::this_thread::yield();
             if (!setup::deleteOVSCSDirContents()) {
                 notif::notify(
                     "The contents of `" 
@@ -1228,6 +1241,8 @@ std::tuple<bool, bool> ui::mainMenu() {
                 installOVSCSInProgress = false;
                 return;
             }
+            ++installOVSCSStage;
+            std::this_thread::yield();
             if (
                 !setup::downloadOVSCS(
                     installOVSCSContent, 
@@ -1244,25 +1259,32 @@ std::tuple<bool, bool> ui::mainMenu() {
                 installOVSCSInProgress = false;
                 return;
             }
-            // if (!sec::verifyOVSCSTarball(installOVSCSContent)) {
-            //     setup::deleteOVSCSDirContents();
-            //     notif::notify("The installed version of OpenVsCode Server could not be verified.");
-                // installOVSCSInProgress = false;
-            //     return;
-            // }
-            // if (!setup::unpackOVSCSTarball()) {
-            //     setup::deleteOVSCSDirContents();
-            //     notif::notify("Failed to unpack OpenVsCode Server archive.");
-                // installOVSCSInProgress = false;
-            //     return;
-            // }
-            // try {
-            //     IData::instructorData->set_ovscsVersion(installOVSCSContent);
-            //     notif::notify("Installation successful.");
-            // } catch (const std::exception &e) {
-            //     notif::notify("Installation successful. OpenVsCode Server version not saved.");
-            // }
+            ++installOVSCSStage;
+            std::this_thread::yield();
+            if (!sec::verifyOVSCSTarball(installOVSCSContent)) {
+                setup::deleteOVSCSDirContents();
+                notif::notify("The installed version of OpenVsCode Server could not be verified.");
+                installOVSCSInProgress = false;
+                return;
+            }
+            ++installOVSCSStage;
+            std::this_thread::yield();
+            if (!setup::unpackOVSCSTarball()) {
+                setup::deleteOVSCSDirContents();
+                notif::notify("Failed to unpack OpenVsCode Server archive.");
+                installOVSCSInProgress = false;
+                return;
+            }
+            ++installOVSCSStage;
+            std::this_thread::yield();
+            try {
+                IData::instructorData->set_ovscsVersion(installOVSCSContent);
+                notif::notify("Installation successful.");
+            } catch (const std::exception &e) {
+                notif::notify("Installation successful. OpenVsCode Server version not saved.");
+            }
             installOVSCSInProgress = false;
+            // Note: Do not hide the modal, as it's responsible for joining the thread.
         }};
     }, ftxui::ButtonOption::Ascii())};
     ftxui::Component installOVSCSModal {ftxui::Renderer(
@@ -1285,6 +1307,9 @@ std::tuple<bool, bool> ui::mainMenu() {
                     ? ftxui::emptyElement() 
                     : ftxui::text("Warning: Cannot verify this distribution.") 
                         | ftxui::color(ftxui::Color::Orange1), 
+                installOVSCSStage != -1 
+                    ? ftxui::text(installOVSCSStageLabels.at(installOVSCSStage)) 
+                    : ftxui::emptyElement(), 
                 installOVSCSInProgress 
                     ? ftxui::hbox(ftxui::gauge(static_cast<float>(
                         installOVSCSDownloadProgress) / installOVSCSDownloadTotal
@@ -1297,7 +1322,9 @@ std::tuple<bool, bool> ui::mainMenu() {
                     cancelInstallOVSCSButton->Render() 
                         | ftxui::hcenter 
                         | ftxui::border 
-                        | ftxui::color(ftxui::Color::Red), 
+                        | (installOVSCSInProgress 
+                            ? ftxui::dim
+                            : ftxui::color(ftxui::Color::Red)), 
                     confirmInstallOVSCSButton->Render() 
                         | ftxui::hcenter 
                         | ftxui::border 

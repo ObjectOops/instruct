@@ -39,7 +39,7 @@ namespace instruct::constants {
         "arm64", "armhf", "x64"
     };
     inline const std::unordered_map<std::string, std::string> OPENVSCODE_SERVER_HASHES {
-        {"v1.79.2", "<placeholder hash>"}
+        {"v1.79.2", "d35dbc5678cdee5cce6c9522b5a8668c8982f35441dcda425aeba9e40d38764f"}
     };
         
     inline const int ASYNC_DISPLAY_SPINNER_TYPE {15};

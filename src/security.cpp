@@ -3,7 +3,6 @@
 #include <fstream>
 #include <thread>
 #include <random>
-// #include <vector>
 #include <tuple>
 
 #include "picosha2.h"
@@ -120,6 +119,7 @@ bool sec::verifyOVSCSTarball(const std::string &ovscsVersion) {
             std::istreambuf_iterator<char> {}
         )};
         fin.close();
+        DLOG_F(INFO, "Tarball hash: %s", hash.c_str());
         return constants::OPENVSCODE_SERVER_HASHES.count(ovscsVersion) != 0 
             && hash == constants::OPENVSCODE_SERVER_HASHES.at(ovscsVersion);
     } catch (const std::exception &e) {
