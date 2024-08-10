@@ -78,6 +78,9 @@
         "fstream": "cpp",
         "future": "cpp",
         "valarray": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "charconv": "cpp",
+        "numbers": "cpp",
+        "semaphore": "cpp"
     }
 }

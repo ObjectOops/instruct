@@ -1,13 +1,11 @@
 #include <exception>
 #include <typeinfo>
 #include <fstream>
-#include <thread>
 #include <random>
 #include <tuple>
 
 #include "picosha2.h"
 #include "loguru.hpp"
-#include "httplib.h"
 
 #include "notification.hpp"
 #include "constants.hpp"
@@ -18,6 +16,56 @@
 namespace instruct {
 
 static const std::string ALIVE_CODE {"Instruct Alive"};
+
+sec::ThreadedServer::ThreadedServer() {
+    server = nullptr;
+    worker = nullptr;
+    initialized = false;
+}
+
+sec::ThreadedServer::ThreadedServer(
+    const std::string &host, 
+    int port, 
+    const std::string &route, 
+    httplib::Server::Handler handler
+) {
+    try {
+        // The `this` pointer goes out-of-scope, so we'll have to hack around it.
+        auto *new_server = new httplib::Server {};
+        server = new_server;
+        worker = new std::thread {[=] {
+            new_server->Get(route, handler);
+            new_server->listen(host, port);
+        }};
+        initialized = true;
+    } catch (const std::exception &e) {
+        LOG_F(ERROR, "Failed to create instance. Exception: %s", e.what());
+        LOG_F(ERROR, "%s", typeid(e).name());
+        LOG_F(ERROR, "%s", e.what());
+        initialized = false;
+    }
+}
+
+sec::ThreadedServer &sec::ThreadedServer::operator=(sec::ThreadedServer &&rhs) noexcept {
+    worker = rhs.worker;
+    server = rhs.server;
+    initialized = rhs.initialized;
+    rhs.worker = nullptr;
+    rhs.server = nullptr;
+    rhs.initialized = false;
+    return *this;
+}
+
+sec::ThreadedServer::~ThreadedServer() {
+    if (server != nullptr) {
+        server->stop();
+    }
+    if (worker != nullptr) {
+        worker->join();
+    }
+    delete server;
+    delete worker;
+}
 
 bool sec::instanceActive() {
     std::string port = std::to_string(IData::instructorData->get_authPort());
@@ -36,30 +84,16 @@ bool sec::instanceActive() {
     
     return isGood;
 }
-bool sec::createInstance() {
-    try {
-        std::thread worker {[] {
-            httplib::Server server {};
-            server.Get(
-                "/heartbeat", 
-                [] (const httplib::Request &, httplib::Response &res) {
-                    DLOG_F(INFO, "Heartbeat connection received.");
-                    res.set_content(ALIVE_CODE, "text/plain");
-                }
-            );
-            server.listen(
-                IData::instructorData->get_authHost(), 
-                IData::instructorData->get_authPort()
-            );
-        }};
-        worker.detach();
-    } catch (const std::exception &e) {
-        LOG_F(ERROR, "Failed to create instance. Exception: %s", e.what());
-        LOG_F(ERROR, "%s", typeid(e).name());
-        LOG_F(ERROR, "%s", e.what());
-        return false;
-    }
-    return true;
+sec::ThreadedServer sec::createInstance() {
+    return {
+        IData::instructorData->get_authHost(), 
+        IData::instructorData->get_authPort(), 
+        "/heartbeat", 
+        [] (const httplib::Request &, httplib::Response &res) {
+            DLOG_F(INFO, "Heartbeat connection received.");
+            res.set_content(ALIVE_CODE, "text/plain");
+        }
+    };
 }
 
 static std::tuple<std::string, std::string> hashAndSalt(const std::string &pswd) {

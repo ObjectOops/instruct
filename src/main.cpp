@@ -33,7 +33,8 @@ int main(int argc, char **argv) {
         instruct::ui::print("Detected an instance of instruct already running.\n");
         return EXIT_FAILURE;
     }
-    if (!instruct::sec::createInstance()) {
+    instruct::sec::ThreadedServer instanceLock {};
+    if (!(instanceLock = instruct::sec::createInstance()).initialized) {
         LOG_F(INFO, "Exiting.");
         return EXIT_FAILURE;
     }
