@@ -63,6 +63,7 @@ if(Python3_FOUND)
 endif()
 set(HTTPLIB_USE_BROTLI_IF_AVAILABLE OFF) # Disable automatically including brotli.
 set(HTTPLIB_INSTALL OFF) # Disable library installation target.
+set(OPENSSL_USE_STATIC_LIBS ON) # Enable static libraries.
 # STDUUID ---------------------
 FetchContent_Declare(stduuid
     GIT_REPOSITORY https://github.com/mariusbancila/stduuid.git
