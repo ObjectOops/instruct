@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <string>
 #include <thread>
+#include <memory>
 
 #include "httplib.h"
 #include "uuid.h"
@@ -14,9 +15,9 @@ namespace instruct::sec {
     class ThreadedServer {
         public:
         
+        std::unique_ptr<std::thread> worker;
+        std::unique_ptr<httplib::Server> server;
         bool initialized;
-        std::thread *worker;
-        httplib::Server *server;
         
         ThreadedServer();
         ThreadedServer(const std::string &, int, const std::string &, httplib::Server::Handler);

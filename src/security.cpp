@@ -17,10 +17,7 @@ namespace instruct {
 
 static const std::string ALIVE_CODE {"Instruct Alive"};
 
-sec::ThreadedServer::ThreadedServer() {
-    server = nullptr;
-    worker = nullptr;
-    initialized = false;
+sec::ThreadedServer::ThreadedServer() : initialized {false} {
 }
 
 sec::ThreadedServer::ThreadedServer(
@@ -31,12 +28,12 @@ sec::ThreadedServer::ThreadedServer(
 ) {
     try {
         // The `this` pointer goes out-of-scope, so we'll have to hack around it.
-        auto *new_server = new httplib::Server {};
-        server = new_server;
-        worker = new std::thread {[=] {
+        server = std::make_unique<httplib::Server>();
+        httplib::Server *new_server {server.get()};
+        worker = std::make_unique<std::thread>([=] {
             new_server->Get(route, handler);
             new_server->listen(host, port);
-        }};
+        });
         initialized = true;
     } catch (const std::exception &e) {
         LOG_F(ERROR, "Failed to create instance. Exception: %s", e.what());
@@ -47,11 +44,9 @@ sec::ThreadedServer::ThreadedServer(
 }
 
 sec::ThreadedServer &sec::ThreadedServer::operator=(sec::ThreadedServer &&rhs) noexcept {
-    worker = rhs.worker;
-    server = rhs.server;
+    worker = std::move(rhs.worker);
+    server = std::move(rhs.server);
     initialized = rhs.initialized;
-    rhs.worker = nullptr;
-    rhs.server = nullptr;
     rhs.initialized = false;
     return *this;
 }
@@ -63,8 +58,6 @@ sec::ThreadedServer::~ThreadedServer() {
     if (worker != nullptr) {
         worker->join();
     }
-    delete server;
-    delete worker;
 }
 
 bool sec::instanceActive() {
