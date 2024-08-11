@@ -327,6 +327,16 @@ static ftxui::Component makeInput(
     ftxui::InputOption = ftxui::InputOption::Default()
 );
 
+static ftxui::ComponentDecorator catchEscEvent(bool &shown, bool val) {
+    return ftxui::CatchEvent([&shown, val] (ftxui::Event event) {
+        if (event == ftxui::Event::Escape) {
+            shown = val;
+            return true;
+        }
+        return false;
+    });
+}
+
 // This is a very large function. The main UI does a lot of things.
 std::tuple<bool, bool> ui::mainMenu() {
     auto appScreen {ftxui::ScreenInteractive::Fullscreen()};
@@ -1350,6 +1360,21 @@ std::tuple<bool, bool> ui::mainMenu() {
             );
         }
     )};
+    
+    app |= catchEscEvent(exitModalShown, true);
+    exitModal |= catchEscEvent(exitModalShown, false);
+    settingsModal |= catchEscEvent(settingsModalShown, false);
+    recentNotifsModal |= catchEscEvent(recentNotifsModalShown, false);
+    importModal |= catchEscEvent(importModalShown, false);
+    exportModal |= catchEscEvent(exportModalShown, false);
+    installOVSCSModal |= catchEscEvent(installOVSCSModalShown, false);
+    notifModal |= ftxui::CatchEvent([&] (ftxui::Event event) {
+        if (event == ftxui::Event::Escape) {
+            notif::ackNotice();
+            return true;
+        }
+        return false;
+    });
     
     app |= ftxui::Modal(exitModal, &exitModalShown);
     app |= ftxui::Modal(settingsModal, &settingsModalShown);
