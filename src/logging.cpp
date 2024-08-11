@@ -9,17 +9,19 @@ namespace instruct {
 
 void log::configureLogging(int argc, char **argv) {
     using namespace std::string_literals;
+    
+    bool verbose {argc == 2 && argv[1] == "-v"s};
 
     loguru::g_stderr_verbosity = loguru::Verbosity_OFF;
     loguru::g_preamble_uptime = false;
-    loguru::g_preamble_thread = false;
-    loguru::g_preamble_file = false;
+    loguru::g_preamble_thread = verbose;
+    loguru::g_preamble_file = verbose;
     // loguru::init(argc, argv);
     
     loguru::add_file(
         constants::INSTRUCT_LOG_DIR.c_str(), 
         loguru::Truncate, 
-        argc == 2 && argv[1] == "-v"s ? loguru::Verbosity_MAX : loguru::Verbosity_INFO
+        verbose ? loguru::Verbosity_MAX : loguru::Verbosity_INFO
     );
 }
 
