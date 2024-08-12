@@ -3,7 +3,7 @@
 #include "security.hpp"
 #include "logging.hpp"
 #include "setup.hpp"
-#include "ui.hpp"
+#include "ui/ui.hpp"
 
 int main(int argc, char **argv) {
     

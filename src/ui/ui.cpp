@@ -17,13 +17,13 @@
 #include "loguru.hpp"
 #include "uuid.h"
 
-#include "notification.hpp"
-#include "constants.hpp"
+#include "../notification.hpp"
+#include "../constants.hpp"
+#include "../security.hpp"
+#include "../logging.hpp"
 #include "terminal.hpp"
-#include "security.hpp"
-#include "logging.hpp"
-#include "setup.hpp"
-#include "data.hpp"
+#include "../setup.hpp"
+#include "../data.hpp"
 #include "ui.hpp"
 
 namespace instruct {

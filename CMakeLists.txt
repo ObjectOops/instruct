@@ -92,10 +92,10 @@ add_executable(instruct
     src/notification.cpp
     src/security.cpp
     src/logging.cpp
+    src/ui/ui.cpp
     src/setup.cpp
     src/main.cpp
     src/data.cpp
-    src/ui.cpp
 )
 
 # Precompile large header files.
