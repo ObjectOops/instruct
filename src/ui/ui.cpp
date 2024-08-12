@@ -18,34 +18,31 @@
 #include "uuid.h"
 
 #include "../notification.hpp"
+#include "util/terminal.hpp"
 #include "../constants.hpp"
+#include "util/spinner.hpp"
 #include "../security.hpp"
 #include "../logging.hpp"
-#include "terminal.hpp"
 #include "../setup.hpp"
 #include "../data.hpp"
 #include "ui.hpp"
 
 namespace instruct {
 
-static std::thread asyncDisplaySpinner(const std::string &, std::atomic_bool &);
-static void stopAsyncDisplaySpinner(std::thread &, std::atomic_bool &);
-
 bool ui::initAllHandled() {
     try {
         term::enableAlternateScreenBuffer();
-        std::atomic_bool spin {true};
-        std::thread spinnerThread {asyncDisplaySpinner("Loading...", spin)};
+        startAsyncSpinner("Loading...");
         
         try {
             Data::initAll();
         } catch (const std::exception &e) {
-            stopAsyncDisplaySpinner(spinnerThread, spin);
+            stopAsyncSpinner();
             term::disableAlternateScreenBuffer();
             throw;
         }
 
-        stopAsyncDisplaySpinner(spinnerThread, spin);
+        stopAsyncSpinner();
         term::disableAlternateScreenBuffer();
     } catch (const std::exception &e) {
         try {
@@ -618,13 +615,12 @@ std::tuple<bool, bool> ui::mainMenu() {
     ftxui::Component exitAffirmative {ftxui::Button("Yes", [&] {
         // Save remaining data if it wasn't already.
         // This includes information such as the selected tests and some UI settings.
-        std::atomic_bool spin {true};
-        std::thread spinnerThread {asyncDisplaySpinner("Saving all data...", spin)};
+        startAsyncSpinner("Saving all data...");
 
         LOG_F(INFO, "Finalizing save data.");
         exitState = instruct::ui::saveAllHandled();
         
-        stopAsyncDisplaySpinner(spinnerThread, spin);
+        stopAsyncSpinner();
         appScreen.Exit();
     }, ftxui::ButtonOption::Ascii())};
     ftxui::Component exitModal {ftxui::Renderer(
@@ -766,8 +762,7 @@ std::tuple<bool, bool> ui::mainMenu() {
         settingsModalShown = false;
     }, ftxui::ButtonOption::Ascii())};
     ftxui::Component settingsSaveChangesButton {ftxui::Button("Save Changes", [&] {
-        std::atomic_bool spin {true};
-        std::thread spinnerThread {asyncDisplaySpinner("Saving changes...", spin)};
+        startAsyncSpinner("Saving changes...");
 
         try {
             // Check for certain criteria.
@@ -782,7 +777,7 @@ std::tuple<bool, bool> ui::mainMenu() {
                 || i_sCodePortRangeContent.first > i_sCodePortRangeContent.second
             ) {
                 notif::notify("A field was left empty or was out of range.");
-                stopAsyncDisplaySpinner(spinnerThread, spin);
+                stopAsyncSpinner();
                 return;
             }
             
@@ -811,7 +806,7 @@ std::tuple<bool, bool> ui::mainMenu() {
             
             log::logExceptionWarning(e);
             
-            stopAsyncDisplaySpinner(spinnerThread, spin);
+            stopAsyncSpinner();
             return;
         }
         // Reset values on successful save in case there's a bug 
@@ -820,7 +815,7 @@ std::tuple<bool, bool> ui::mainMenu() {
         
         notif::notify("Saved settings.");
         
-        stopAsyncDisplaySpinner(spinnerThread, spin);
+        stopAsyncSpinner();
     }, ftxui::ButtonOption::Ascii())};
 
     auto inputLine {[] (std::string label, ftxui::Component &component) {
@@ -1004,8 +999,7 @@ std::tuple<bool, bool> ui::mainMenu() {
         "Cancel", [&] {importModalShown = false;}, ftxui::ButtonOption::Ascii()
     )};
     ftxui::Component confirmImportButton {ftxui::Button("Import", [&] {
-        std::atomic_bool spin {true};
-        std::thread spinnerThread {asyncDisplaySpinner("Importing students list...", spin)};
+        startAsyncSpinner("Importing students list...");
 
         try {
             if (!SData::importStudentsList(
@@ -1015,7 +1009,7 @@ std::tuple<bool, bool> ui::mainMenu() {
                 importPrivCol, 
                 importPrivColEnabled
             )) {
-                stopAsyncDisplaySpinner(spinnerThread, spin);
+                stopAsyncSpinner();
                 return;
             }
         } catch (const std::exception &e) {
@@ -1023,7 +1017,7 @@ std::tuple<bool, bool> ui::mainMenu() {
             
             log::logExceptionWarning(e);
             
-            stopAsyncDisplaySpinner(spinnerThread, spin);
+            stopAsyncSpinner();
             return; // Stay in the import modal.
         }
 
@@ -1031,7 +1025,7 @@ std::tuple<bool, bool> ui::mainMenu() {
 
         notif::notify("Successfully imported students list.");
 
-        stopAsyncDisplaySpinner(spinnerThread, spin);
+        stopAsyncSpinner();
         importModalShown = false;
         appScreen.Exit();
     }, ftxui::ButtonOption::Ascii())};
@@ -1130,12 +1124,11 @@ std::tuple<bool, bool> ui::mainMenu() {
         "Cancel", [&] {exportModalShown = false;}, ftxui::ButtonOption::Ascii()
     )};
     ftxui::Component confirmExportButton {ftxui::Button("Export", [&] {
-        std::atomic_bool spin {true};
-        std::thread spinnerThread {asyncDisplaySpinner("Exporting students list...", spin)};
+        startAsyncSpinner("Exporting students list...");
 
         try {
             if (!SData::exportStudentsList(exportInputContent)) {
-                stopAsyncDisplaySpinner(spinnerThread, spin);
+                stopAsyncSpinner();
                 return;
             }
         } catch (const std::exception &e) {
@@ -1143,13 +1136,13 @@ std::tuple<bool, bool> ui::mainMenu() {
             
             log::logExceptionWarning(e);
             
-            stopAsyncDisplaySpinner(spinnerThread, spin);
+            stopAsyncSpinner();
             return; // Stay in the export modal.
         }
 
         notif::notify("Successfully exported students list.");
 
-        stopAsyncDisplaySpinner(spinnerThread, spin);
+        stopAsyncSpinner();
         exportModalShown = false;
     }, ftxui::ButtonOption::Ascii())};
     ftxui::InputOption exportInputOptions {ftxui::InputOption::Default()};
@@ -1389,34 +1382,6 @@ std::tuple<bool, bool> ui::mainMenu() {
     return exitState;
     // Also reset appScreen cursor manually.
     // Escape also brings up exit menu.
-}
-
-static std::thread asyncDisplaySpinner(const std::string &msg, std::atomic_bool &spin) {
-    // Make a copy first to avoid a race condition.
-    std::string msgCopy {msg};
-    return std::thread {[msgCopy, &spin] {
-        DLOG_F(INFO, "Spinner thread started.");
-        auto spinnerScreen {ftxui::Screen::Create({ftxui::Terminal::Size().dimx, 1})};
-        unsigned long long step {};
-        while (spin) {
-            ftxui::Element spinner {ftxui::hbox(
-                ftxui::spinner(constants::ASYNC_DISPLAY_SPINNER_TYPE, step) 
-                    | ftxui::color(ftxui::Color::Gold1), 
-                ftxui::separator(), 
-                ftxui::text(msgCopy)
-            ) | ftxui::bgcolor(ftxui::Color::DarkRed)};
-            ftxui::Render(spinnerScreen, spinner);
-            term::forceCursorRow(ftxui::Terminal::Size().dimy);
-            spinnerScreen.Print();
-            std::this_thread::sleep_for(constants::ASYNC_DISPLAY_SPINNER_INTERVAL);
-            ++step;
-        }
-        DLOG_F(INFO, "Spinner thread stopped.");
-    }};
-}
-static void stopAsyncDisplaySpinner(std::thread &spinnerThread, std::atomic_bool &spin) {
-    spin = false;
-    spinnerThread.join();
 }
 
 static ftxui::Element inputTransformCustom(ftxui::InputState state) {
