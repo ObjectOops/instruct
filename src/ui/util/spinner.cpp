@@ -28,7 +28,7 @@ void ui::startAsyncSpinner(const std::string &msg) {
                 ftxui::text(msg)
             ) | ftxui::bgcolor(ftxui::Color::DarkRed)};
             ftxui::Render(spinnerScreen, spinner);
-            term::forceCursorRow(ftxui::Terminal::Size().dimy);
+            ui::forceCursorRow(ftxui::Terminal::Size().dimy);
             spinnerScreen.Print();
             std::this_thread::sleep_for(constants::ASYNC_DISPLAY_SPINNER_INTERVAL);
             ++step;

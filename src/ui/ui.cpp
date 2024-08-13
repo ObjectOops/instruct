@@ -31,19 +31,19 @@ namespace instruct {
 
 bool ui::initAllHandled() {
     try {
-        term::enableAlternateScreenBuffer();
+        ui::enableAlternateScreenBuffer();
         startAsyncSpinner("Loading...");
         
         try {
             Data::initAll();
         } catch (const std::exception &e) {
             stopAsyncSpinner();
-            term::disableAlternateScreenBuffer();
+            ui::disableAlternateScreenBuffer();
             throw;
         }
 
         stopAsyncSpinner();
-        term::disableAlternateScreenBuffer();
+        ui::disableAlternateScreenBuffer();
     } catch (const std::exception &e) {
         try {
             std::filesystem::rename(
@@ -190,7 +190,7 @@ std::tuple<bool, int> ui::setupMenu() {
 }
 
 static bool instructSetup(const std::string &instructPswd) {
-    term::enableAlternateScreenBuffer();
+    ui::enableAlternateScreenBuffer();
     
     auto nestedSetupScreen {ftxui::Screen::Create(ftxui::Dimension::Full())};
 
@@ -226,9 +226,9 @@ static bool instructSetup(const std::string &instructPswd) {
                     : " | No exception.")
                 + " | Message: " + setupError.msg
             };
-            term::disableAlternateScreenBuffer();
+            ui::disableAlternateScreenBuffer();
             std::cerr << setupErrorStr << '\n';
-            term::enableAlternateScreenBuffer();
+            ui::enableAlternateScreenBuffer();
             displayProgress(setupErrorStr, true);
             displayProgress("Press [Enter] to exit.");
             std::cin.get();
@@ -278,7 +278,7 @@ static bool instructSetup(const std::string &instructPswd) {
     displayProgress("Press [Enter] to complete set up.");
     std::cin.get();
     
-    term::disableAlternateScreenBuffer();
+    ui::disableAlternateScreenBuffer();
     return true;
 }
 

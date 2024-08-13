@@ -89,6 +89,7 @@ FetchContent_MakeAvailable(
 )
 
 add_executable(instruct
+    src/ui/util/terminal.cpp
     src/ui/util/spinner.cpp
     src/notification.cpp
     src/security.cpp
