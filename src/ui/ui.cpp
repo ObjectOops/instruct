@@ -23,6 +23,7 @@
 #include "util/spinner.hpp"
 #include "../security.hpp"
 #include "../logging.hpp"
+#include "util/input.hpp"
 #include "../setup.hpp"
 #include "../data.hpp"
 #include "ui.hpp"
@@ -96,7 +97,6 @@ void ui::print(const std::string &s) {
     std::cout << s;
 }
 
-static ftxui::Element inputTransformCustom(ftxui::InputState);
 static bool instructSetup(const std::string &);
 
 std::tuple<bool, int> ui::setupMenu() {
@@ -317,12 +317,6 @@ static void createPaneBoxes(
 );
 
 static ftxui::Dimensions getDimensions();
-static ftxui::Component makeInput(
-    std::string &, 
-    std::string, 
-    ftxui::Closure = {}, 
-    ftxui::InputOption = ftxui::InputOption::Default()
-);
 
 static ftxui::ComponentDecorator catchEscEvent(bool &shown, bool val) {
     return ftxui::CatchEvent([&shown, val] (ftxui::Event event) {
@@ -1384,17 +1378,6 @@ std::tuple<bool, bool> ui::mainMenu() {
     // Escape also brings up exit menu.
 }
 
-static ftxui::Element inputTransformCustom(ftxui::InputState state) {
-    state.element |= ftxui::color(ftxui::Color::White);
-    if (state.is_placeholder) {
-        state.element |= ftxui::dim;
-    }
-    if (!state.focused && state.hovered) {
-        state.element |= ftxui::bgcolor(ftxui::Color::GrayDark);
-    }
-    return state.element;
-}
-
 static void createTitleBarMenus(
     std::vector<TitleBarMenuContents> &titleBarMenuContents, 
     ftxui::Components &titleBarMenus, 
@@ -1562,20 +1545,6 @@ static void createPaneBoxes(
 
 static ftxui::Dimensions getDimensions() {
     return ftxui::Terminal::Size();
-}
-static ftxui::Component makeInput(
-    std::string &content, 
-    std::string placeholder, 
-    ftxui::Closure on_enter, 
-    ftxui::InputOption base
-) {
-    ftxui::InputOption inputOptions {base};
-    inputOptions.content = &content;
-    inputOptions.multiline = false;
-    inputOptions.on_enter = on_enter;
-    inputOptions.placeholder = placeholder;
-    inputOptions.transform = inputTransformCustom;
-    return ftxui::Input(inputOptions);
 }
 
 }
